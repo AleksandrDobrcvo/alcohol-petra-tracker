@@ -93,7 +93,7 @@ export default async function HomePage() {
 
       <section className="relative z-10 mt-6 text-center">
         <p className="text-sm text-zinc-400">
-          ✨ Сайт працює на Vercel!
+          ✨ Створено Саня космос!
         </p>
       </section>
 

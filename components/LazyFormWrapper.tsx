@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, lazy, Suspense } from "react";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Send, Sparkles } from "lucide-react";
 
@@ -8,11 +9,14 @@ import { Send, Sparkles } from "lucide-react";
 const MultiStepForm = lazy(() => import("./ui/MultiStepForm"));
 
 export default function LazyFormWrapper() {
+  const { data: session } = useSession();
   const [showForm, setShowForm] = useState(false);
 
   const handleSubmit = async (formData: any) => {
     console.log("Form submitted:", formData);
   };
+
+  if (!session) return null;
 
   return (
     <>
