@@ -76,6 +76,27 @@ export default async function HomePage() {
         </Link>
       </section>
 
+      <section className="relative z-10 mt-10 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+          <div className="text-sm font-medium">🍺 Алкоголь</div>
+          <div className="mt-1 text-sm text-zinc-200/80">Здавай алкоголь на склад клану</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+          <div className="text-sm font-medium">🌿 Петра</div>
+          <div className="mt-1 text-sm text-zinc-200/80">Здавай петру для клану</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+          <div className="text-sm font-medium">Безпечно</div>
+          <div className="mt-1 text-sm text-zinc-200/80">Доступ лише через Discord-акаунт.</div>
+        </div>
+      </section>
+
+      <section className="relative z-10 mt-6 text-center">
+        <p className="text-sm text-zinc-400">
+          ✨ Сайт працює на Vercel!
+        </p>
+      </section>
+
       {/* Animated submission button */}
       <LazyFormWrapper />
     </main>

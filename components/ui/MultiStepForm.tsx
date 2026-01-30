@@ -68,34 +68,20 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
     switch (step) {
       case 1:
         return (
-          <motion.div
-            key="step1"
-            variants={stepVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-            className="text-center"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-8"
-            >
+          <div key="step1" className="text-center">
+            <div className="mb-8">
               <User className="w-20 h-20 mx-auto text-amber-400" />
-            </motion.div>
+            </div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 1 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Введи свій нікнейм</p>
-            <motion.input
-              whileFocus={{ scale: 1.02 }}
+            <input
               type="text"
               value={formData.nickname}
               onChange={(e) => updateFormData({ nickname: e.target.value })}
               placeholder="Твій нікнейм в грі..."
               className="w-full px-6 py-4 text-lg bg-zinc-800/50 border-2 border-amber-500/30 rounded-xl text-white placeholder-zinc-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
             />
-          </motion.div>
+          </div>
         );
 
       case 2:
@@ -201,7 +187,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               <Coins className="w-20 h-20 mx-auto text-amber-400" />
             </motion.div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 4 з {totalSteps}</h2>
-            <p className="text-xl text-zinc-300 mb-8">Скільки ⭐ здас?</p>
+            <p className="text-xl text-zinc-300 mb-8">Скільки зірочок здас на склад?</p>
             <div className="space-y-6">
               {[1, 2, 3].map((stars) => (
                 <motion.div
