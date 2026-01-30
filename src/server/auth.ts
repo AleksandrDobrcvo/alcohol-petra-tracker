@@ -1,0 +1,36 @@
+import { getServerSession } from "next-auth";
+import { ApiError } from "@/src/server/errors";
+import { authOptions } from "@/src/server/authOptions";
+
+export type AuthContext = {
+  userId: string;
+  role: "OWNER" | "ADMIN" | "VIEWER";
+  moderatesAlco: boolean;
+  moderatesPetra: boolean;
+  isFrozen: boolean;
+};
+
+export async function requireSession(): Promise<AuthContext> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new ApiError(401, "UNAUTHENTICATED", "Sign-in required");
+  }
+  if (session.user.isBlocked) {
+    throw new ApiError(403, "BLOCKED", "User is blocked");
+  }
+  if (!session.user.isApproved) {
+    throw new ApiError(403, "NOT_APPROVED", "Access requires admin approval");
+  }
+  if (session.user.isFrozen) {
+    throw new ApiError(403, "FROZEN", session.user.frozenReason ?? "Profile is frozen");
+  }
+
+  return {
+    userId: session.user.id,
+    role: session.user.role,
+    moderatesAlco: session.user.moderatesAlco,
+    moderatesPetra: session.user.moderatesPetra,
+    isFrozen: session.user.isFrozen,
+  };
+}
+

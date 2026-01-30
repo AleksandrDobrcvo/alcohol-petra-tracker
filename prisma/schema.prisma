@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id         String  @id @default(uuid())
+  discordId  String  @unique
+  name       String
+  role       String  @default("VIEWER") // OWNER | ADMIN | VIEWER
+  cardNumber String?
+  isBlocked  Boolean @default(false)
+  isApproved Boolean @default(false)
+  moderatesAlco  Boolean @default(false)
+  moderatesPetra Boolean @default(false)
+  isFrozen       Boolean @default(false)
+  frozenReason   String?
+
+  submittedEntries Entry[] @relation("EntrySubmitter")
+  createdEntries   Entry[] @relation("EntryCreator")
+  updatedEntries   Entry[] @relation("EntryUpdater")
+
+  submittedRequests EntryRequest[] @relation("RequestSubmitter")
+  decidedRequests   EntryRequest[] @relation("RequestDecider")
+
+  auditLogs        AuditLog[]        @relation("AuditActor")
+  publicViewTokens PublicViewToken[] @relation("PublicTokenCreator")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Entry {
+  id            String   @id @default(uuid())
+  date          DateTime
+  submitterId   String
+  submitter     User     @relation("EntrySubmitter", fields: [submitterId], references: [id], onDelete: Restrict)
+  type          String   // ALCO | PETRA
+  stars         Int
+  quantity      Int
+  amount        Float    // was Decimal(12, 2) -> Float
+  paymentStatus String   @default("UNPAID") // UNPAID | PAID
+  paidAt        DateTime?
+
+  createdById String
+  createdBy   User     @relation("EntryCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String?
+  updatedBy   User?    @relation("EntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entryRequest EntryRequest?
+
+  @@index([date])
+  @@index([submitterId])
+  @@index([paymentStatus])
+  @@index([type])
+}
+
+model EntryRequest {
+  id        String   @id @default(uuid())
+  submitterId String
+  submitter  User     @relation("RequestSubmitter", fields: [submitterId], references: [id], onDelete: Restrict)
+
+  date     DateTime
+  type     String
+  stars    Int
+  quantity Int
+  amount   Float
+  nickname String
+
+  screenshotPath String
+
+  status       String   @default("PENDING")
+  decidedAt    DateTime?
+  decisionNote String?
+  decidedById  String?
+  decidedBy    User?    @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  relatedEntryId String?  @unique
+  relatedEntry   Entry?   @relation(fields: [relatedEntryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([submitterId])
+  @@index([decidedById])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String
+  actor       User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  action      String   // ENTRY_CREATE | ENTRY_UPDATE | PAYMENT_STATUS_CHANGE | USER_ROLE_CHANGE | USER_BLOCK_CHANGE | USER_APPROVE_CHANGE | PUBLIC_TOKEN_CREATE | PUBLIC_TOKEN_REVOKE
+  targetType  String
+  targetId    String
+  before      String?  // was Json
+  after       String?  // was Json
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([targetType, targetId])
+}
+
+model PublicViewToken {
+  id          String   @id @default(uuid())
+  tokenHash   String   @unique
+  isRevoked   Boolean  @default(false)
+  createdById String
+  createdBy   User     @relation("PublicTokenCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isRevoked])
+  @@index([createdAt])
+}
+
