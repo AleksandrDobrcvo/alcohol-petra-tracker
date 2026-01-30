@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState, useRef } from "react";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 
 export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const didRedirect = useRef(false);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        await signIn("discord", { callbackUrl: "/" });
-      } catch (e) {
+    if (status === "loading") return;
+    if (session) {
+      window.location.href = "/";
+      return;
+    }
+    if (status === "unauthenticated" && !didRedirect.current) {
+      didRedirect.current = true;
+      signIn("discord", { callbackUrl: "/", redirect: true }).catch((e) => {
         setError(e instanceof Error ? e.message : "Unknown error");
-      }
-    })();
-  }, []);
+        didRedirect.current = false;
+      });
+    }
+  }, [session, status]);
+
+  const handleSignIn = () => {
+    setError(null);
+    signIn("discord", { callbackUrl: "/", redirect: true }).catch((e) => {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    });
+  };
 
   return (
     <main className="relative mx-auto flex min-h-[calc(100vh-0px)] max-w-4xl flex-col items-center justify-center px-6 py-12 text-center">
@@ -42,13 +56,14 @@ export default function SignInPage() {
           Відкриваємо Discord...
         </h1>
         <p className="mt-3 text-sm text-zinc-200/80 sm:text-base">
-          Якщо нічого не відбулось — натисни кнопку нижче.
+          {status === "loading" ? "Перевіряємо сесію..." : "Якщо нічого не відбулось — натисни кнопку нижче."}
         </p>
 
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <button
-            onClick={() => signIn("discord", { callbackUrl: "/" })}
-            className="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-400"
+            onClick={handleSignIn}
+            disabled={status === "loading"}
+            className="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             🔁 Повторити вхід
           </button>

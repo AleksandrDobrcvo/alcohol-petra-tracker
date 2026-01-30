@@ -6,7 +6,7 @@
     "dev": "set NEXT_TELEMETRY_DISABLED=1 && next dev -H 0.0.0.0",
     "dev:fast": "set NEXT_TELEMETRY_DISABLED=1 && set NODE_OPTIONS=--max-old-space-size=4096 && next dev -H 0.0.0.0",
     "dev:public": "concurrently \"npm run dev\" \"lt --port 3000 --subdomain cold-pandas-enjoy\"",
-    "build": "next build",
+    "build": "prisma generate && prisma db push && next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",

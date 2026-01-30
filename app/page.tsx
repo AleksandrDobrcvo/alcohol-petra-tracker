@@ -5,14 +5,30 @@ import LazyFormWrapper from "@/components/LazyFormWrapper";
 import { motion } from "framer-motion";
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  const role = session?.user?.role ?? "VIEWER";
+  let session = null;
+  let role: "OWNER" | "ADMIN" | "VIEWER" = "VIEWER";
+  try {
+    session = await getServerSession(authOptions);
+    role = (session?.user?.role as "OWNER" | "ADMIN" | "VIEWER") ?? "VIEWER";
+  } catch {
+    // БД/сессия недоступны — показываем главную без сессии, без ошибки
+  }
 
   return (
     <main className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl flex-col px-6 py-12">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="absolute -right-28 top-24 h-80 w-80 rounded-full bg-amber-400/20 blur-3xl" />
+      </div>
+
+      {/* Бутылка (Алко) і Петра на головному екрані */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute left-0 top-20 hidden w-[180px] select-none sm:block md:w-[240px]">
+          <img className="float-petra opacity-90" src="/petra.png" alt="" loading="lazy" draggable={false} />
+        </div>
+        <div className="absolute right-0 top-28 hidden w-[180px] select-none sm:block md:w-[240px]">
+          <img className="float-alco opacity-90" src="/alco.png" alt="" loading="lazy" draggable={false} />
+        </div>
       </div>
 
       <div className="relative z-10 text-center">

@@ -30,6 +30,7 @@ body {
     radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
   animation: backgroundShift 20s ease-in-out infinite;
   pointer-events: none;
+  will-change: transform;
 }
 
 @keyframes backgroundShift {
@@ -117,6 +118,76 @@ body {
 
 .pulse-glow {
   animation: pulse 2s ease-in-out infinite;
+}
+
+/* Footer: анимації на CSS (без лагів) */
+.footer-animated {
+  animation: footerFadeIn 0.8s ease-out 0.3s both;
+}
+@keyframes footerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.footer-brand {
+  animation: footerPulse 3s ease-in-out infinite;
+}
+.footer-emoji {
+  display: inline-block;
+  animation: footerRotate 8s linear infinite;
+}
+.footer-dot {
+  animation: footerPulse 2s ease-in-out infinite 0.5s;
+}
+.footer-message {
+  animation: footerPulse 3s ease-in-out infinite 1s;
+}
+@keyframes footerPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+@keyframes footerRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.footer-icons .footer-icon {
+  display: inline-block;
+  animation: footerIconPulse 2.5s ease-in-out infinite;
+}
+.footer-icon-delay-1 { animation-delay: 0.5s; }
+.footer-icon-delay-2 { animation-delay: 1s; }
+@keyframes footerIconPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+/* BeerLoading: лёгкие CSS-анимации */
+.beer-loading-fade {
+  animation: beerFadeIn 0.4s ease-out;
+}
+@keyframes beerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.beer-fill {
+  animation: beerFillPulse 2s ease-in-out infinite;
+}
+@keyframes beerFillPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+.beer-icon-bob {
+  animation: beerBob 2s ease-in-out infinite;
+}
+@keyframes beerBob {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.05); }
+}
+.beer-text-pulse {
+  animation: beerTextPulse 1.5s ease-in-out infinite;
+}
+@keyframes beerTextPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* Animated particles */
