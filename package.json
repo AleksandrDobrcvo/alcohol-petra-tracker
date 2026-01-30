@@ -6,8 +6,8 @@
     "dev": "set NEXT_TELEMETRY_DISABLED=1 && next dev -H 0.0.0.0",
     "dev:fast": "set NEXT_TELEMETRY_DISABLED=1 && set NODE_OPTIONS=--max-old-space-size=4096 && next dev -H 0.0.0.0",
     "dev:public": "concurrently \"npm run dev\" \"lt --port 3000 --subdomain cold-pandas-enjoy\"",
-    "build": "prisma generate && prisma db push && next build",
-    "start": "next start",
+    "build": "prisma generate && next build",
+    "start": "prisma db push && next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -23,6 +23,9 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "zod": "^3.24.1"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
