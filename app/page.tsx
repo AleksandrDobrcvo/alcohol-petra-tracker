@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { unstable_noStore } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/server/authOptions";
 import LazyFormWrapper from "@/components/LazyFormWrapper";
 import { motion } from "framer-motion";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
+  unstable_noStore();
   let session = null;
   let role: "OWNER" | "ADMIN" | "VIEWER" = "VIEWER";
   try {

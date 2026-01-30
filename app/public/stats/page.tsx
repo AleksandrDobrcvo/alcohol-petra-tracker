@@ -1,6 +1,10 @@
+import { unstable_noStore } from "next/cache";
 import { prisma } from "@/src/server/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function PublicStatsPage() {
+  unstable_noStore();
   const [alcoStats, petraStats] = await Promise.all([
     prisma.entry.groupBy({
       by: ["submitterId"],

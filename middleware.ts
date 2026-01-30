@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { existsSync } from "fs";
-import { join } from "path";
 
 function isInMaintenance() {
-  try {
-    const flagPath = join(process.cwd(), ".maintenance");
-    return existsSync(flagPath);
-  } catch {
-    return false;
-  }
+  return process.env.MAINTENANCE_MODE === "true";
 }
 
 export function middleware(req: NextRequest) {
