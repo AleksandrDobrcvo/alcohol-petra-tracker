@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
 
     const nextType = body.type ?? existing.type;
     const nextStars = body.stars ?? existing.stars;
-    const recalculated = body.type || body.stars ? calcQuantityAndAmount(nextType, nextStars) : null;
+    const recalculated = body.type || body.stars ? calcQuantityAndAmount(nextType as "ALCO" | "PETRA", nextStars) : null;
 
     const updated = await prisma.entry.update({
       where: { id },
