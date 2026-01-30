@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/server/authOptions";
 import LazyFormWrapper from "@/components/LazyFormWrapper";
+import { motion } from "framer-motion";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -91,10 +92,29 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-10 mt-6 text-center">
-        <p className="text-sm text-zinc-400">
-          ✨ Створено Саня космос!
-        </p>
+      <section className="relative z-10 mt-12 text-center">
+        <div className="border-t border-white/10 pt-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
+            className="space-y-4"
+          >
+            <p className="text-lg font-medium text-white">
+              ✨ Створено з любов'ю Саня космос
+            </p>
+            <p className="text-sm text-zinc-400">
+              🚀 Сучасний трекер для клану
+            </p>
+            <div className="flex justify-center items-center gap-6 text-xs text-zinc-500">
+              <span>Next.js</span>
+              <span>•</span>
+              <span>TailwindCSS</span>
+              <span>•</span>
+              <span>Vercel</span>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* Animated submission button */}
