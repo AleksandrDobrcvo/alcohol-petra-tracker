@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/server/authOptions";
+import LazyFormWrapper from "@/components/LazyFormWrapper";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  const role = session?.user?.role ?? "VIEWER";
+
   return (
     <main className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl flex-col px-6 py-12">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -15,46 +21,63 @@ export default function HomePage() {
         <p className="text-xl text-zinc-300 mb-8">
           Облік здачі Алко та Петри
         </p>
-        
-        <div className="space-y-4">
-          <Link
-            className="inline-flex items-center justify-center rounded-xl bg-white/10 px-6 py-3 text-lg font-medium text-white backdrop-blur hover:bg-white/15 transition-colors"
-            href="/api/test"
-          >
-            🧪 Перевірити API
-          </Link>
-          
-          <div className="block">
+
+        {session ? (
+          <>
+            <p className="text-lg text-zinc-300 mb-4">
+              👋 Вітаю, {session.user?.name || "користувач"}!
+            </p>
+            {role === "VIEWER" && (
+              <p className="text-sm text-amber-400 mb-4">
+                ⏳ Твій акаунт очікує на підтвердження адміністратором
+              </p>
+            )}
+            {(role === "ADMIN" || role === "OWNER") && (
+              <p className="text-sm text-green-400 mb-4">
+                ✅ Ти маєш доступ до всіх функцій
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-lg text-zinc-300 mb-4">
+            🔐 Увійдіть через Discord для доступу до функцій
+          </p>
+        )}
+
+        {session && (
+          <section className="relative z-10 mt-6 text-center">
             <Link
-              className="inline-flex items-center justify-center rounded-xl bg-white/10 px-6 py-3 text-lg font-medium text-white backdrop-blur hover:bg-white/15 transition-colors"
-              href="/public/stats"
+              className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
+              href="/entries"
             >
-              � Публічна статистика клану
+              📒 Перейти до записів
             </Link>
-          </div>
-        </div>
+          </section>
+        )}
+
+        {session && role === "ADMIN" && (
+          <section className="relative z-10 mt-4 text-center">
+            <Link
+              className="inline-flex items-center justify-center rounded-xl bg-red-500/20 px-4 py-3 text-sm font-medium text-red-300 backdrop-blur hover:bg-red-500/30"
+              href="/admin"
+            >
+              ⚙️ Адмін панель
+            </Link>
+          </section>
+        )}
       </div>
 
-      <section className="relative z-10 mt-10 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">Прозоро</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Видно, хто саме додав Алко/Петру.</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">Зручно</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Швидке додавання і пошук по записах.</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">Безпечно</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Доступ лише через Discord-акаунт.</div>
-        </div>
+      <section className="relative z-10 mt-6 text-center">
+        <Link
+          className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
+          href="/public/stats"
+        >
+          📊 Публічна статистика клану
+        </Link>
       </section>
 
-      <section className="relative z-10 mt-6 text-center">
-        <p className="text-sm text-zinc-400">
-          ✨ Сайт працює на Vercel!
-        </p>
-      </section>
+      {/* Animated submission button */}
+      <LazyFormWrapper />
     </main>
   );
 }
