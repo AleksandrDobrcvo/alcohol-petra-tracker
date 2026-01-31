@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import BeerLoading from "@/components/ui/BeerLoading";
 import Footer from "@/components/ui/Footer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Analytics } from "@/components/Analytics";
 
 export const metadata: Metadata = {
   title: {
