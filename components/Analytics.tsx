@@ -8,12 +8,15 @@ declare global {
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
-// Замініть на ваш Measurement ID з Google Analytics
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID || "G-XXXXXXXXXX";
+// Fallback component for Suspense
+function AnalyticsFallback() {
+  return null;
+}
 
-export function Analytics() {
+// Main analytics component
+function AnalyticsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -34,6 +37,17 @@ export function Analytics() {
 
   return (
     <>
+      <AnalyticsContent />
+    </Suspense>
+  );
+}
+
+// Замініть на ваш Measurement ID з Google Analytics
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID || "G-XXXXXXXXXX";
+
+export function Analytics() {
+  return (
+    <Suspense fallback={<AnalyticsFallback />}>
       <Script
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}

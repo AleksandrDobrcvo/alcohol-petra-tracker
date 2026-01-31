@@ -96,7 +96,7 @@ export default function RootLayout({
             <Footer />
           </ErrorBoundary>
         </SessionProvider>
-        <Analytics />
+        {/* <Analytics /> */}
         <BeerLoading />
       </body>
     </html>
