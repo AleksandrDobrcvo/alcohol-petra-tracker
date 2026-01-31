@@ -62,7 +62,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
           stars: existing.stars,
           quantity: existing.quantity,
           amount: existing.amount,
-          paymentStatus: "UNPAID",
+          paymentStatus: "PAID",
           createdById: ctx.userId,
         },
       });

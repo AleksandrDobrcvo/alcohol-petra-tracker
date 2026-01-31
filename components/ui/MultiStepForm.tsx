@@ -6,6 +6,7 @@ import { ChevronRight, ChevronLeft, Beer, Sprout, Coins, Calendar, User, Package
 
 interface FormData {
   nickname: string;
+  cardLastDigits: string;
   type: "ALCO" | "PETRA";
   quantities: {
     stars1: number;
@@ -25,13 +26,23 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
   const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     nickname: "",
+    cardLastDigits: "",
     type: "ALCO",
     quantities: { stars1: 0, stars2: 0, stars3: 0 }
   });
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const nextStep = () => {
+    if (step === 1 && !formData.nickname.trim()) {
+      setError("Введи свій нікнейм!");
+      return;
+    }
+    if (step === 2 && formData.cardLastDigits.length !== 6) {
+      setError("Введи 6 цифр карти!");
+      return;
+    }
+    setError(null);
     if (step < totalSteps) setStep(step + 1);
   };
 
@@ -39,7 +50,16 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
     if (step > 1) setStep(step - 1);
   };
 
+  const [error, setError] = useState<string | null>(null);
+
+  const totalQuantity = formData.quantities.stars1 + formData.quantities.stars2 + formData.quantities.stars3;
+
   const handleSubmit = async () => {
+    if (totalQuantity <= 0) {
+      setError("Будь ласка, вкажіть кількість хоча б одного ресурсу!");
+      return;
+    }
+    setError(null);
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -95,6 +115,33 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             transition={{ duration: 0.3 }}
             className="text-center"
           >
+            <div className="mb-8">
+              <Coins className="w-20 h-20 mx-auto text-amber-400" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 2 з {totalSteps}</h2>
+            <p className="text-xl text-zinc-300 mb-8">6 останніх цифр карти</p>
+            <input
+              type="text"
+              maxLength={6}
+              value={formData.cardLastDigits}
+              onChange={(e) => updateFormData({ cardLastDigits: e.target.value.replace(/\D/g, '') })}
+              placeholder="123456"
+              className="w-full px-6 py-4 text-center text-2xl font-black bg-zinc-800/50 border-2 border-amber-500/30 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
+            />
+          </motion.div>
+        );
+
+      case 3:
+        return (
+          <motion.div
+            key="step3"
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="text-center"
+          >
             <motion.div
               initial={{ rotate: 0 }}
               animate={{ rotate: 360 }}
@@ -103,7 +150,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             >
               <Package className="w-20 h-20 mx-auto text-amber-400" />
             </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-4">Крок 2 з {totalSteps}</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 3 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Що здас на склад?</p>
             <div className="grid grid-cols-2 gap-6">
               <motion.button
@@ -136,37 +183,6 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
           </motion.div>
         );
 
-      case 3:
-        return (
-          <motion.div
-            key="step3"
-            variants={stepVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-            className="text-center"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-8"
-            >
-              <Calendar className="w-20 h-20 mx-auto text-amber-400" />
-            </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-4">Крок 3 з {totalSteps}</h2>
-            <p className="text-xl text-zinc-300 mb-8">Дата здачі</p>
-            <motion.input
-              whileFocus={{ scale: 1.02 }}
-              type="date"
-              value={new Date().toISOString().split('T')[0]}
-              onChange={(e) => console.log('Date:', e.target.value)}
-              className="w-full px-6 py-4 text-lg bg-zinc-800/50 border-2 border-amber-500/30 rounded-xl text-white focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
-            />
-          </motion.div>
-        );
-
       case 4:
         return (
           <motion.div
@@ -184,9 +200,40 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="mb-8"
             >
-              <Coins className="w-20 h-20 mx-auto text-amber-400" />
+              <Calendar className="w-20 h-20 mx-auto text-amber-400" />
             </motion.div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 4 з {totalSteps}</h2>
+            <p className="text-xl text-zinc-300 mb-8">Дата здачі</p>
+            <motion.input
+              whileFocus={{ scale: 1.02 }}
+              type="date"
+              value={new Date().toISOString().split('T')[0]}
+              onChange={(e) => console.log('Date:', e.target.value)}
+              className="w-full px-6 py-4 text-lg bg-zinc-800/50 border-2 border-amber-500/30 rounded-xl text-white focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
+            />
+          </motion.div>
+        );
+
+      case 5:
+        return (
+          <motion.div
+            key="step5"
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="text-center"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="mb-8"
+            >
+              <Coins className="w-20 h-20 mx-auto text-amber-400" />
+            </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 5 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Скільки зірочок здас на склад?</p>
             <div className="space-y-6">
               {[1, 2, 3].map((stars) => (
@@ -222,42 +269,6 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
           </motion.div>
         );
 
-      case 5:
-        return (
-          <motion.div
-            key="step5"
-            variants={stepVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{ duration: 0.3 }}
-            className="text-center"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-8"
-            >
-              <Coins className="w-20 h-20 mx-auto text-green-400" />
-            </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-4">Крок 5 з {totalSteps}</h2>
-            <p className="text-xl text-zinc-300 mb-8">Розрахунок винагороди</p>
-            <div className="bg-zinc-800/30 p-6 rounded-xl space-y-4">
-              <div className="text-lg text-zinc-300">
-                <p>⭐ 1 зірка: {formData.quantities.stars1} шт × 50₴ = {formData.quantities.stars1 * 50}₴</p>
-                <p>⭐⭐ 2 зірки: {formData.quantities.stars2} шт × 100₴ = {formData.quantities.stars2 * 100}₴</p>
-                <p>⭐⭐⭐ 3 зірки: {formData.quantities.stars3} шт × 150₴ = {formData.quantities.stars3 * 150}₴</p>
-              </div>
-              <div className="border-t border-zinc-600 pt-4">
-                <p className="text-2xl font-bold text-green-400">
-                  Загалом: {(formData.quantities.stars1 * 50 + formData.quantities.stars2 * 100 + formData.quantities.stars3 * 150)}₴
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        );
-
       case 6:
         return (
           <motion.div
@@ -275,12 +286,49 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="mb-8"
             >
-              <Check className="w-20 h-20 mx-auto text-green-400" />
+              <Coins className="w-20 h-20 mx-auto text-green-400" />
             </motion.div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 6 з {totalSteps}</h2>
+            <p className="text-xl text-zinc-300 mb-8">Розрахунок винагороди</p>
+            <div className="bg-zinc-800/30 p-6 rounded-xl space-y-4">
+              <div className="text-lg text-zinc-300">
+                <p>⭐ 1 зірка: {formData.quantities.stars1} шт × 50₴ = {formData.quantities.stars1 * 50}₴</p>
+                <p>⭐⭐ 2 зірки: {formData.quantities.stars2} шт × 100₴ = {formData.quantities.stars2 * 100}₴</p>
+                <p>⭐⭐⭐ 3 зірки: {formData.quantities.stars3} шт × 150₴ = {formData.quantities.stars3 * 150}₴</p>
+              </div>
+              <div className="border-t border-zinc-600 pt-4">
+                <p className="text-2xl font-bold text-green-400">
+                  Загалом: {(formData.quantities.stars1 * 50 + formData.quantities.stars2 * 100 + formData.quantities.stars3 * 150)}₴
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        );
+
+      case 7:
+        return (
+          <motion.div
+            key="step7"
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="text-center"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="mb-8"
+            >
+              <Check className="w-20 h-20 mx-auto text-green-400" />
+            </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 7 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Перевірка даних</p>
             <div className="bg-zinc-800/30 p-6 rounded-xl text-left space-y-3">
               <p className="text-lg"><span className="text-zinc-400">Нікнейм:</span> <span className="text-white font-semibold">{formData.nickname}</span></p>
+              <p className="text-lg"><span className="text-zinc-400">Карта:</span> <span className="text-white font-semibold">*{formData.cardLastDigits}</span></p>
               <p className="text-lg"><span className="text-zinc-400">Тип:</span> <span className="text-white font-semibold">{formData.type === "ALCO" ? "🍺 Алко" : "🌿 Петра"}</span></p>
               <p className="text-lg"><span className="text-zinc-400">Кількість:</span> 
                 <span className="text-white font-semibold">
@@ -362,6 +410,20 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
           <X className="w-6 h-6" />
         </motion.button>
 
+        {/* Error Message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0, x: [0, -10, 10, -10, 10, 0] }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-center text-xs font-bold text-red-400"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Step Content */}
         <div className="min-h-[400px] flex items-center justify-center">
           <AnimatePresence mode="wait">
@@ -391,7 +453,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleSubmit}
-              disabled={isSubmitting || !formData.nickname.trim()}
+              disabled={isSubmitting || !formData.nickname.trim() || formData.cardLastDigits.length !== 6 || totalQuantity <= 0}
               className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Відправка..." : "Подати заявку"}
@@ -402,7 +464,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={nextStep}
-              disabled={step === 1 && !formData.nickname.trim()}
+              disabled={(step === 1 && !formData.nickname.trim()) || (step === 2 && formData.cardLastDigits.length !== 6)}
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg font-semibold hover:from-amber-600 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Далі

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertOwner } from "@/src/server/rbac";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { writeAuditLog } from "@/src/server/audit";
 
@@ -12,7 +12,7 @@ const schema = z.object({
 export async function POST(req: Request) {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const body = schema.parse(await req.json());
     const token = await prisma.publicViewToken.findUnique({ where: { id: body.id } });

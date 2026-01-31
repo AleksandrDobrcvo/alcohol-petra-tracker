@@ -8,13 +8,13 @@ export function assertRoleOrThrow(ctx: AuthContext, allowed: AuthContext["role"]
 }
 
 export function assertOwner(ctx: AuthContext) {
-  assertRoleOrThrow(ctx, ["OWNER"]);
+  assertRoleOrThrow(ctx, ["LEADER"]);
 }
 
 export function assertCanModerateOrThrow(ctx: AuthContext, type: "ALCO" | "PETRA") {
-  if (ctx.role === "OWNER" || ctx.role === "ADMIN") return;
-  if (type === "ALCO" && ctx.moderatesAlco) return;
-  if (type === "PETRA" && ctx.moderatesPetra) return;
+  if (ctx.role === "LEADER" || ctx.role === "DEPUTY" || ctx.role === "SENIOR") return;
+  if (type === "ALCO" && (ctx.role === "ALCO_STAFF" || ctx.moderatesAlco)) return;
+  if (type === "PETRA" && (ctx.role === "PETRA_STAFF" || ctx.moderatesPetra)) return;
   throw new ApiError(403, "FORBIDDEN", "Insufficient permissions");
 }
 

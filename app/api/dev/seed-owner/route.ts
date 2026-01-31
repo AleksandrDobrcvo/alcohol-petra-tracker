@@ -7,7 +7,7 @@ export async function POST() {
   }
 
   try {
-    const existing = await prisma.user.findFirst({ where: { role: "OWNER" } });
+    const existing = await prisma.user.findFirst({ where: { role: "LEADER" } });
     if (existing) {
       return NextResponse.json({ ok: true, message: "Owner already exists", user: existing });
     }
@@ -16,7 +16,7 @@ export async function POST() {
       data: {
         discordId: "dev-owner-12345",
         name: "Dev Owner",
-        role: "OWNER",
+        role: "LEADER",
         isBlocked: false,
         isApproved: true,
       },

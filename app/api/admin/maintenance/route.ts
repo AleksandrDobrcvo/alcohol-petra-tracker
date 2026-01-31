@@ -2,7 +2,7 @@ import { writeFileSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import { NextResponse } from "next/server";
 import { requireSession } from "@/src/server/auth";
-import { assertOwner } from "@/src/server/rbac";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 
 const FLAG_PATH = join(process.cwd(), ".maintenance");
@@ -10,7 +10,7 @@ const FLAG_PATH = join(process.cwd(), ".maintenance");
 export async function GET() {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
     const isOn = existsSync(FLAG_PATH);
     return jsonOk({ maintenance: isOn });
   } catch (e) {
@@ -21,7 +21,7 @@ export async function GET() {
 export async function PATCH(req: Request) {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const body = (await req.json()) as { enabled?: boolean };
     const { enabled } = body;

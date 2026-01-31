@@ -1,26 +1,26 @@
-import Link from "next/link";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { requireSession } from "@/src/server/auth";
-import { assertOwner } from "@/src/server/rbac";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { AdminAuditClient } from "@/components/admin/AdminAuditClient";
 
 export default async function AdminAuditPage() {
   const ctx = await requireSession();
-  assertOwner(ctx);
+  assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Админка: логи</h1>
-        <div className="flex items-center gap-3 text-sm">
-          <Link className="text-zinc-300 hover:text-zinc-100" href="/admin/users">
-            Пользователи
-          </Link>
-          <Link className="text-zinc-300 hover:text-zinc-100" href="/">
-            Главная
-          </Link>
-        </div>
-      </header>
-      <AdminAuditClient />
+    <main className="relative mx-auto flex max-w-7xl flex-col px-6 py-10 pb-20">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-24 top-16 h-96 w-96 rounded-full bg-emerald-500/10 blur-[100px] animate-blob" />
+        <div className="absolute -right-28 top-24 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px] animate-blob animation-delay-2000" />
+      </div>
+
+      <div className="relative z-10">
+        <AdminHeader 
+          title="Аудит" 
+          subtitle="Журнал дій адміністраторів та модераторів" 
+        />
+        <AdminAuditClient />
+      </div>
     </main>
   );
 }

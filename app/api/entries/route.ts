@@ -11,11 +11,12 @@ const entryCreateSchema = z.object({
   submitterId: z.string().uuid(),
   type: z.enum(["ALCO", "PETRA"]),
   stars: z.number().int().min(1).max(3),
+  quantity: z.number().int().min(1).default(1),
 });
 
 export async function GET(req: Request) {
   try {
-    // public for signed-in users (including VIEWER)
+    // public for signed-in users (including MEMBER)
     await requireSession();
 
     const url = new URL(req.url);
@@ -60,10 +61,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["OWNER", "ADMIN"]);
-
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
     const body = entryCreateSchema.parse(await req.json());
-    const { quantity, amount } = calcQuantityAndAmount(body.type, body.stars);
+    const { quantity, amount } = await calcQuantityAndAmount(body.type, body.stars, body.quantity);
 
     const entry = await prisma.entry.create({
       data: {

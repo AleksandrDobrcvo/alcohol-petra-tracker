@@ -1,16 +1,17 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: clan_tracker_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: clan123456
-      POSTGRES_DB: clan_tracker
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+version: '3.8'
 
-volumes:
-  postgres_data:
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:./prod.db
+      - NEXTAUTH_SECRET=your-super-secret-key-here-min-32-characters-for-testing
+      - NEXTAUTH_URL=http://localhost:3000
+      - DISCORD_CLIENT_ID=your-discord-client-id
+      - DISCORD_CLIENT_SECRET=your-discord-client-secret
+      - OWNER_DISCORD_ID=your-discord-user-id
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

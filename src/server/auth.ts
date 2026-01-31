@@ -4,7 +4,7 @@ import { authOptions } from "@/src/server/authOptions";
 
 export type AuthContext = {
   userId: string;
-  role: "OWNER" | "ADMIN" | "VIEWER";
+  role: "LEADER" | "DEPUTY" | "SENIOR" | "ALCO_STAFF" | "PETRA_STAFF" | "MEMBER";
   moderatesAlco: boolean;
   moderatesPetra: boolean;
   isFrozen: boolean;
@@ -27,7 +27,7 @@ export async function requireSession(): Promise<AuthContext> {
 
   return {
     userId: session.user.id,
-    role: session.user.role,
+    role: (session.user.role as any) || "MEMBER",
     moderatesAlco: session.user.moderatesAlco,
     moderatesPetra: session.user.moderatesPetra,
     isFrozen: session.user.isFrozen,

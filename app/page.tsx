@@ -3,26 +3,28 @@ import { unstable_noStore } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/server/authOptions";
 import LazyFormWrapper from "@/components/LazyFormWrapper";
-import { motion } from "framer-motion";
+
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   unstable_noStore();
   let session = null;
-  let role: "OWNER" | "ADMIN" | "VIEWER" = "VIEWER";
+  let role: "LEADER" | "DEPUTY" | "SENIOR" | "ALCO_STAFF" | "PETRA_STAFF" | "MEMBER" = "MEMBER";
   try {
     session = await getServerSession(authOptions);
-    role = (session?.user?.role as "OWNER" | "ADMIN" | "VIEWER") ?? "VIEWER";
+    role = (session?.user?.role as any) ?? "MEMBER";
   } catch {
     // БД/сессия недоступны — показываем главную без сессии, без ошибки
   }
 
   return (
-    <main className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl flex-col px-6 py-12">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="absolute -right-28 top-24 h-80 w-80 rounded-full bg-amber-400/20 blur-3xl" />
+    <main className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-7xl flex-col px-6 py-12 pb-20">
+      {/* Decorative Blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-24 top-16 h-96 w-96 rounded-full bg-emerald-500/10 blur-[100px] animate-blob" />
+        <div className="absolute -right-28 top-24 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px] animate-blob animation-delay-2000" />
+        <div className="absolute left-1/3 bottom-0 h-80 w-80 rounded-full bg-sky-500/10 blur-[100px] animate-blob animation-delay-4000" />
       </div>
 
       {/* Бутылка (Алко) і Петра на головному екрані */}
@@ -36,33 +38,54 @@ export default async function HomePage() {
       </div>
 
       <div className="relative z-10 text-center">
-        <h1 className="text-6xl font-bold text-white mb-6">
-          🍺 Clan Tracker
+        <h1 className="text-4xl font-bold text-white mb-4">
+          🎯 SOBRANIE
         </h1>
-        <p className="text-xl text-zinc-300 mb-8">
-          Облік здачі Алко та Петри
+        <p className="text-lg text-zinc-300 mb-6">
+          Облік ресурсів клану
         </p>
 
         {session ? (
           <>
-            <p className="text-lg text-zinc-300 mb-4">
-              👋 Вітаю, {session.user?.name || "користувач"}!
+            <p className="text-xl text-zinc-300 mb-4">
+              👋 Вітаємо, <span className="text-amber-400 font-bold">{session.user?.name || "користувач"}</span>!
             </p>
-            {role === "VIEWER" && (
-              <p className="text-sm text-amber-400 mb-4">
-                ⏳ Твій акаунт очікує на підтвердження адміністратором
-              </p>
+            {role === "MEMBER" && (
+              <div className="mx-auto max-w-md rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200 backdrop-blur-sm shadow-[0_0_20px_rgba(245,158,11,0.1)]">
+                ⏳ Твій акаунт очікує на підтвердження адміністратором. Незабаром ти отримаєш доступ до всіх функцій!
+              </div>
             )}
-            {(role === "ADMIN" || role === "OWNER") && (
-              <p className="text-sm text-green-400 mb-4">
-                ✅ Ти маєш доступ до всіх функцій
-              </p>
+            {(role === "LEADER" || role === "DEPUTY" || role === "SENIOR") && (
+              <div className="mx-auto max-w-md rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-200 backdrop-blur-sm shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                ✅ Ти маєш розширений доступ до управління кланом.
+              </div>
             )}
           </>
         ) : (
-          <p className="text-lg text-zinc-300 mb-4">
-            🔐 Увійдіть через Discord для доступу до функцій
-          </p>
+          <div className="mx-auto max-w-xl space-y-6">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-md shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-4 flex items-center justify-center gap-2">
+                🔐 Вхід через Discord
+              </h2>
+              <p className="text-zinc-300 leading-relaxed text-sm sm:text-base">
+                Ми використовуємо Discord тільки для ідентифікації вашого ігрового персонажа. 
+                Це необхідно, щоб ваші записи про здачу ресурсів зберігалися у вашому профілі, 
+                а ви могли бачити свою статистику та історію виплат.
+              </p>
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2 text-xs text-green-400 font-medium bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  Це на 100% безпечно
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-zinc-500 italic">
+              *Ми не отримуємо доступ до вашого пароля або особистих даних Discord.
+            </p>
+          </div>
         )}
 
         {session && (
@@ -76,64 +99,56 @@ export default async function HomePage() {
           </section>
         )}
 
-        {session && role === "ADMIN" && (
+        {session && (role === "LEADER" || role === "DEPUTY" || role === "SENIOR") && (
           <section className="relative z-10 mt-4 text-center">
             <Link
-              className="inline-flex items-center justify-center rounded-xl bg-red-500/20 px-4 py-3 text-sm font-medium text-red-300 backdrop-blur hover:bg-red-500/30"
-              href="/admin"
+              className="group relative inline-flex items-center justify-center rounded-xl bg-red-500/20 px-6 py-3 text-sm font-black uppercase tracking-widest text-red-300 backdrop-blur hover:bg-red-500/30 transition-all"
+              href="/admin/users"
             >
               ⚙️ Адмін панель
+              <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </Link>
           </section>
         )}
       </div>
 
-      <section className="relative z-10 mt-6 text-center">
-        <Link
-          className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
-          href="/public/stats"
-        >
-          📊 Публічна статистика клану
-        </Link>
-      </section>
-
-      <section className="relative z-10 mt-10 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">🍺 Алкоголь</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Здавай алкоголь на склад клану</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">🌿 Петра</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Здавай петру для клану</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <div className="text-sm font-medium">Безпечно</div>
-          <div className="mt-1 text-sm text-zinc-200/80">Доступ лише через Discord-акаунт.</div>
-        </div>
-      </section>
-
-      <section className="relative z-10 mt-12 text-center">
-        <div className="border-t border-white/10 pt-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
-            className="space-y-4"
+      {session && (
+        <section className="relative z-10 mt-6 text-center">
+          <Link
+            className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
+            href="/public/stats"
           >
-            <p className="text-lg font-medium text-white">
-              ✨ Створено з любов'ю Саня космос
-            </p>
-            <p className="text-sm text-zinc-400">
-              🚀 Сучасний трекер для клану
-            </p>
-            <div className="flex justify-center items-center gap-6 text-xs text-zinc-500">
-              <span>Next.js</span>
-              <span>•</span>
-              <span>TailwindCSS</span>
-              <span>•</span>
-              <span>Vercel</span>
-            </div>
-          </motion.div>
+            📊 Публічна статистика клану
+          </Link>
+        </section>
+      )}
+
+      <section className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
+        <div className="group relative rounded-3xl border border-white/5 bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.05] transition-all duration-500 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-2xl group-hover:scale-110 transition-transform duration-300">🍺</div>
+            <div className="text-xl font-bold text-white mb-2">Алкоголь</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">Здавай алкоголь на склад клану та отримуй винагороду.</div>
+          </div>
+        </div>
+        
+        <div className="group relative rounded-3xl border border-white/5 bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.05] transition-all duration-500 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-2xl group-hover:scale-110 transition-transform duration-300">🌿</div>
+            <div className="text-xl font-bold text-white mb-2">Петра</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">Допомагай клану ресурсами та ставай сильнішим.</div>
+          </div>
+        </div>
+
+        <div className="group relative rounded-3xl border border-white/5 bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.05] transition-all duration-500 hover:-translate-y-2 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/20 text-2xl group-hover:scale-110 transition-transform duration-300">🛡️</div>
+            <div className="text-xl font-bold text-white mb-2">Безпека</div>
+            <div className="text-sm text-zinc-400 leading-relaxed">Повна конфіденційність та захист ваших даних.</div>
+          </div>
         </div>
       </section>
 

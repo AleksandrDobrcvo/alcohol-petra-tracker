@@ -1,3 +1,4 @@
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminRequestsClient } from "@/components/admin/AdminRequestsClient";
 import { requireSession } from "@/src/server/auth";
 import { ApiError } from "@/src/server/errors";
@@ -8,7 +9,13 @@ export default async function AdminRequestsPage() {
   try {
     const ctx = await requireSession();
     const allowed =
-      ctx.role === "OWNER" || ctx.role === "ADMIN" || ctx.moderatesAlco || ctx.moderatesPetra;
+      ctx.role === "LEADER" || 
+      ctx.role === "DEPUTY" || 
+      ctx.role === "SENIOR" || 
+      ctx.role === "ALCO_STAFF" || 
+      ctx.role === "PETRA_STAFF" || 
+      ctx.moderatesAlco || 
+      ctx.moderatesPetra;
     if (!allowed) {
       throw new ApiError(403, "FORBIDDEN", "Недостатньо прав для перегляду заявок");
     }
@@ -37,12 +44,19 @@ export default async function AdminRequestsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">✅ Заявки</h1>
-        <div className="text-sm text-zinc-300">Модерація заявок Алко/Петра</div>
-      </header>
-      <AdminRequestsClient />
+    <main className="relative mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10 pb-20">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-24 top-16 h-96 w-96 rounded-full bg-emerald-500/10 blur-[100px] animate-blob" />
+        <div className="absolute -right-28 top-24 h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px] animate-blob animation-delay-2000" />
+      </div>
+
+      <div className="relative z-10">
+        <AdminHeader 
+          title="Заявки" 
+          subtitle="Перевірка скріншотів та підтвердження виплат" 
+        />
+        <AdminRequestsClient />
+      </div>
     </main>
   );
 }

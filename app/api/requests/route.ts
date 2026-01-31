@@ -13,6 +13,8 @@ const createSchema = z.object({
   nickname: z.string().trim().min(2).max(32),
   type: z.enum(["ALCO", "PETRA"]),
   stars: z.coerce.number().int().min(1).max(3),
+  quantity: z.coerce.number().int().min(1).default(1),
+  cardLastDigits: z.string().length(6).regex(/^\d+$/).optional(),
 });
 
 const listSchema = z.object({
@@ -22,7 +24,8 @@ const listSchema = z.object({
 });
 
 function canSeeAll(ctx: Awaited<ReturnType<typeof requireSession>>) {
-  return ctx.role === "OWNER" || ctx.role === "ADMIN" || ctx.moderatesAlco || ctx.moderatesPetra;
+  // User requested that everyone can see all requests and statuses
+  return true;
 }
 
 export async function GET(req: Request) {
@@ -68,12 +71,16 @@ export async function POST(req: Request) {
       nickname: form.get("nickname"),
       type: form.get("type"),
       stars: form.get("stars"),
+      quantity: form.get("quantity"),
+      cardLastDigits: form.get("cardLastDigits"),
     };
 
     const parsed = createSchema.parse({
       nickname: typeof raw.nickname === "string" ? raw.nickname : "",
       type: typeof raw.type === "string" ? raw.type : "",
       stars: typeof raw.stars === "string" ? raw.stars : raw.stars,
+      quantity: typeof raw.quantity === "string" ? raw.quantity : "1",
+      cardLastDigits: typeof raw.cardLastDigits === "string" ? raw.cardLastDigits : undefined,
     });
 
     const screenshot = form.get("screenshot");
@@ -95,7 +102,7 @@ export async function POST(req: Request) {
     const abs = join(dir, filename);
     await writeFile(abs, buf);
 
-    const { quantity, amount } = calcQuantityAndAmount(parsed.type, parsed.stars);
+    const { quantity, amount } = await calcQuantityAndAmount(parsed.type, parsed.stars, parsed.quantity);
     const screenshotPath = `/uploads/requests/${filename}`;
 
     const created = await prisma.entryRequest.create({
@@ -108,6 +115,7 @@ export async function POST(req: Request) {
         amount,
         nickname: parsed.nickname,
         screenshotPath,
+        cardLastDigits: parsed.cardLastDigits ?? null,
         status: "PENDING",
       },
       include: {
@@ -128,6 +136,7 @@ export async function POST(req: Request) {
         amount: created.amount,
         nickname: created.nickname,
         screenshotPath: created.screenshotPath,
+        cardLastDigits: created.cardLastDigits,
       },
     });
 

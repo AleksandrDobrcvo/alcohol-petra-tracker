@@ -4,9 +4,12 @@ import { prisma } from "@/src/server/prisma";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   jwt: {
-    maxAge: 60 * 60 * 24 * 14,
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
     DiscordProvider({
@@ -36,11 +39,22 @@ export const authOptions: NextAuthOptions = {
           : false;
 
         const existing = await prisma.user.findUnique({ where: { discordId } });
+        
+        // If existing user's ID matches the owner ID, but role is not LEADER, fix it
+        if (existing && isOwner && existing.role !== "LEADER") {
+          await prisma.user.update({
+            where: { id: existing.id },
+            data: { role: "LEADER", isApproved: true },
+          });
+          existing.role = "LEADER";
+          existing.isApproved = true;
+        }
+
         const shouldBootstrapOwner =
           process.env.NODE_ENV === "development" &&
           !isOwner &&
           !existing &&
-          !(await prisma.user.findFirst({ where: { role: "OWNER" } }));
+          !(await prisma.user.findFirst({ where: { role: "LEADER" } }));
 
         const user =
           existing ??
@@ -48,7 +62,7 @@ export const authOptions: NextAuthOptions = {
             data: {
               discordId,
               name,
-              role: isOwner || shouldBootstrapOwner ? "OWNER" : "VIEWER",
+              role: isOwner || shouldBootstrapOwner ? "LEADER" : "MEMBER",
               isBlocked: false,
               isApproved: isOwner || shouldBootstrapOwner,
             },
@@ -75,7 +89,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.userId as string;
-        session.user.role = (token.role as "OWNER" | "ADMIN" | "VIEWER") ?? "VIEWER";
+        session.user.role = (token.role as any) ?? "MEMBER";
         session.user.isBlocked = Boolean(token.isBlocked);
         session.user.isApproved = Boolean(token.isApproved);
         session.user.moderatesAlco = Boolean((token as any).moderatesAlco);

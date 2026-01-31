@@ -12,7 +12,7 @@ const paymentSchema = z.object({
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["OWNER", "ADMIN"]);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const id = ctx2.params.id;
     const body = paymentSchema.parse(await req.json());

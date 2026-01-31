@@ -5,6 +5,10 @@ node_modules/
 .next/
 out/
 
+# Cache directories
+.next/cache/
+.cache/
+
 # Environment variables
 .env
 .env.local
@@ -28,3 +32,8 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 ".next/" 
+
+# Docker
+.dockerignore
+data/
+prod.db 

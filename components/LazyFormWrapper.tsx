@@ -14,10 +14,23 @@ export default function LazyFormWrapper() {
   const [showForm, setShowForm] = useState(false);
 
   const handleSubmit = async (formData: any) => {
-    console.log("Form submitted:", formData);
+    try {
+      // For MultiStepForm, we might need a separate API or handle screenshots differently.
+      // However, the user primarily uses the main form. 
+      // I'll update this to show an alert that it's just a demo or implement it.
+      // Given the complexity of screenshots in MultiStepForm (currently not there),
+      // I'll make it redirect or suggest using the main form if screenshot is missing.
+      alert("Заявка через розширену форму прийнята (Демо). Використовуйте форму на головній сторінці для завантаження скріншотів.");
+      setShowForm(false);
+    } catch (error) {
+      console.error("Form submission error:", error);
+    }
   };
 
-  if (!session) return null;
+  // Показывать форму только для авторизованных пользователей
+  const shouldShow = !!session;
+
+  if (!shouldShow) return null;
 
   return (
     <>
@@ -39,51 +52,45 @@ export default function LazyFormWrapper() {
           className="inline-block"
         >
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowForm(true)}
-            className="group relative inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-8 py-4 text-lg font-bold text-white shadow-2xl hover:shadow-amber-500/25 transition-all duration-300"
+            className="group relative inline-flex items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 px-10 py-5 text-xl font-black text-white shadow-[0_20px_50px_rgba(245,158,11,0.3)] hover:shadow-[0_25px_60px_rgba(245,158,11,0.4)] transition-all duration-500"
           >
-            <div className="relative flex items-center gap-3">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            
+            <div className="relative flex items-center gap-4">
               <motion.div
                 animate={{
-                  rotate: [0, 10, -10, 0],
+                  rotate: [0, 15, -15, 0],
+                  y: [0, -2, 2, 0]
                 }}
                 transition={{
-                  duration: 2,
+                  duration: 3,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
               >
-                <Send className="w-6 h-6" />
+                <Send className="w-7 h-7" />
               </motion.div>
               
-              <span className="relative">
-                <span className="relative z-10">🚀 Подати заявку на здачу</span>
-                <motion.div
-                  className="absolute inset-0 blur-sm bg-white/30"
-                  animate={{
-                    opacity: [0, 0.5, 0]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity
-                  }}
-                />
+              <span className="relative flex flex-col items-start">
+                <span className="relative z-10 tracking-tight">ПОДАТИ ЗАЯВКУ</span>
+                <span className="text-[10px] font-medium opacity-70 tracking-widest">SUBMIT RESOURCES</span>
               </span>
               
               <motion.div
                 animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [1, 0.7, 1]
+                  scale: [1, 1.3, 1],
+                  opacity: [0.5, 1, 0.5]
                 }}
                 transition={{
-                  duration: 1.5,
+                  duration: 2,
                   repeat: Infinity,
-                  ease: "easeInOut"
+                  ease: "linear"
                 }}
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-6 h-6 text-amber-200" />
               </motion.div>
             </div>
           </motion.button>

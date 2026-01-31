@@ -1,6 +1,6 @@
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertOwner } from "@/src/server/rbac";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { generatePublicToken, hashPublicToken } from "@/src/server/publicToken";
 import { writeAuditLog } from "@/src/server/audit";
@@ -8,7 +8,7 @@ import { writeAuditLog } from "@/src/server/audit";
 export async function GET() {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const tokens = await prisma.publicViewToken.findMany({
       orderBy: [{ createdAt: "desc" }],
@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST() {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const rawToken = generatePublicToken();
     const tokenHash = hashPublicToken(rawToken);

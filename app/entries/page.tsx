@@ -32,7 +32,7 @@ export default async function EntriesPage() {
           : "Увійди через Discord, щоб бачити записи та додавати Алко/Петру.";
 
     return (
-      <main className="relative mx-auto flex min-h-[calc(100vh-0px)] max-w-5xl flex-col items-center justify-center px-6 py-12">
+      <main className="relative mx-auto flex min-h-[calc(100vh-0px)] max-w-4xl flex-col items-center justify-center px-6 py-12">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-emerald-400/18 blur-3xl" />
           <div className="absolute -right-28 top-24 h-80 w-80 rounded-full bg-amber-400/18 blur-3xl" />
@@ -77,7 +77,7 @@ export default async function EntriesPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10 pb-20">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">📒 Записи</h1>
         <Link className="text-sm text-zinc-300 hover:text-zinc-100" href="/">

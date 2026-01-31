@@ -1,12 +1,12 @@
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertOwner } from "@/src/server/rbac";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 
 export async function GET() {
   try {
     const ctx = await requireSession();
-    assertOwner(ctx);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const users = await prisma.user.findMany({
       orderBy: [{ role: "asc" }, { name: "asc" }],

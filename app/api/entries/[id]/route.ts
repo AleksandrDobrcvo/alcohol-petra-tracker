@@ -18,7 +18,7 @@ const entryPatchSchema = z
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["OWNER", "ADMIN"]);
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
     const id = ctx2.params.id;
     const body = entryPatchSchema.parse(await req.json());
@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
 
     const nextType = body.type ?? existing.type;
     const nextStars = body.stars ?? existing.stars;
-    const recalculated = body.type || body.stars ? calcQuantityAndAmount(nextType as "ALCO" | "PETRA", nextStars) : null;
+    const recalculated = body.type || body.stars ? await calcQuantityAndAmount(nextType as "ALCO" | "PETRA", nextStars) : null;
 
     const updated = await prisma.entry.update({
       where: { id },
@@ -71,6 +71,41 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     });
 
     return jsonOk({ entry: updated });
+  } catch (e) {
+    return jsonError(e);
+  }
+}
+
+export async function DELETE(req: Request, ctx2: { params: { id: string } }) {
+  try {
+    const ctx = await requireSession();
+    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+
+    const id = ctx2.params.id;
+    const existing = await prisma.entry.findUnique({ where: { id } });
+    if (!existing) {
+      return jsonOk({ success: true }, { status: 404 });
+    }
+
+    await prisma.entry.delete({ where: { id } });
+
+    await writeAuditLog({
+      actorUserId: ctx.userId,
+      action: "ENTRY_DELETE",
+      targetType: "Entry",
+      targetId: id,
+      before: {
+        date: existing.date,
+        type: existing.type,
+        stars: existing.stars,
+        quantity: existing.quantity,
+        amount: existing.amount,
+        paymentStatus: existing.paymentStatus,
+        submitterId: existing.submitterId,
+      },
+    });
+
+    return jsonOk({ success: true });
   } catch (e) {
     return jsonError(e);
   }
