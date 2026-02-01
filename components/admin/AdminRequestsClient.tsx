@@ -19,6 +19,7 @@ import {
   Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useNotifications } from "@/components/ui/Toast";
 
 type RequestRow = {
   id: string;
@@ -38,6 +39,7 @@ type RequestRow = {
 };
 
 export function AdminRequestsClient() {
+  const { success, error: notifyError } = useNotifications();
   const [items, setItems] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +83,19 @@ export function AdminRequestsClient() {
       });
       const json = (await res.json()) as { ok: boolean; error?: { message: string } };
       if (!json.ok) throw new Error(json.error?.message ?? "Не вдалося зберегти рішення");
+      
+      // Show success notification
+      if (next === "APPROVED") {
+        success("Заявку схвалено! ✅", "Виплата буде виконана");
+      } else {
+        success("Заявку відхилено", note || "Без коментаря");
+      }
+      
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Невідома помилка");
+      const msg = e instanceof Error ? e.message : "Невідома помилка";
+      setError(msg);
+      notifyError("Помилка", msg);
     }
   }
 
@@ -94,9 +106,12 @@ export function AdminRequestsClient() {
       const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error?.message ?? "Не вдалося видалити");
+      success("Заявку видалено", "");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка");
+      const msg = e instanceof Error ? e.message : "Помилка";
+      setError(msg);
+      notifyError("Помилка", msg);
     }
   }
 

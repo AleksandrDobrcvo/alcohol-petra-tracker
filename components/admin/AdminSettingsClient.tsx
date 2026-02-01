@@ -92,6 +92,23 @@ type RoleDef = {
   desc?: string;
 };
 
+// Predefined color themes for easy selection
+const COLOR_THEMES = [
+  { name: "Золото", color: "from-amber-500 to-yellow-500", textColor: "text-amber-400", preview: "bg-gradient-to-r from-amber-500 to-yellow-500" },
+  { name: "Помаранч", color: "from-amber-400 to-orange-400", textColor: "text-orange-400", preview: "bg-gradient-to-r from-amber-400 to-orange-400" },
+  { name: "Червоний", color: "from-red-500 to-rose-500", textColor: "text-red-400", preview: "bg-gradient-to-r from-red-500 to-rose-500" },
+  { name: "Рожевий", color: "from-pink-500 to-rose-400", textColor: "text-pink-400", preview: "bg-gradient-to-r from-pink-500 to-rose-400" },
+  { name: "Фіолет", color: "from-purple-500 to-violet-500", textColor: "text-purple-400", preview: "bg-gradient-to-r from-purple-500 to-violet-500" },
+  { name: "Синій", color: "from-blue-500 to-indigo-500", textColor: "text-blue-400", preview: "bg-gradient-to-r from-blue-500 to-indigo-500" },
+  { name: "Блакитний", color: "from-sky-500 to-cyan-500", textColor: "text-sky-400", preview: "bg-gradient-to-r from-sky-500 to-cyan-500" },
+  { name: "Бірюза", color: "from-teal-500 to-emerald-500", textColor: "text-teal-400", preview: "bg-gradient-to-r from-teal-500 to-emerald-500" },
+  { name: "Зелений", color: "from-emerald-500 to-green-500", textColor: "text-emerald-400", preview: "bg-gradient-to-r from-emerald-500 to-green-500" },
+  { name: "Сірий", color: "from-zinc-500 to-slate-500", textColor: "text-zinc-400", preview: "bg-gradient-to-r from-zinc-500 to-slate-500" },
+];
+
+// Popular emojis for roles
+const ROLE_EMOJIS = ["👑", "⭐", "🛡️", "🍺", "🌿", "✅", "🔥", "⚡", "💎", "🌟", "🏆", "🎯", "🚀", "💠", "💔", "🥇", "🥈", "🥉", "🎉", "🌈"];
+
 export function AdminSettingsClient() {
   const [roles, setRoles] = useState<RoleDef[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +313,7 @@ export function AdminSettingsClient() {
         </div>
       </motion.div>
 
-      {/* Edit Role Modal */}
+      {/* Edit Role Modal - Visual Editor */}
       <AnimatePresence>
         {(editingRole || isAdding) && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -311,7 +328,7 @@ export function AdminSettingsClient() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg rounded-[2.5rem] border border-white/10 bg-zinc-900 p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border border-white/10 bg-zinc-900 p-8 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-black text-white uppercase tracking-tight">
@@ -322,83 +339,157 @@ export function AdminSettingsClient() {
                 </button>
               </div>
 
-              <div className="space-y-5">
+              {/* Live Preview */}
+              <div className="mb-8 p-6 rounded-2xl bg-black/30 border border-white/5">
+                <div className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold mb-4">Перегляд</div>
+                <div className="flex items-center gap-4">
+                  <motion.div 
+                    className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${editingRole?.color} text-3xl shadow-lg`}
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {editingRole?.emoji || "👤"}
+                  </motion.div>
+                  <div>
+                    <div className={`text-xl font-black ${editingRole?.textColor || 'text-white'}`}>
+                      {editingRole?.label || "Назва ролі"}
+                    </div>
+                    <div className="text-xs text-zinc-500">{editingRole?.desc || "Опис ролі"}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-mono text-zinc-600 bg-white/5 px-2 py-0.5 rounded">{editingRole?.name || "ROLE_ID"}</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">Сила: {editingRole?.power || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">ID (Системна назва)</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">ID Ролі <span className="text-zinc-600">(латиниця)</span></label>
                     <input 
                       type="text"
                       disabled={!isAdding}
-                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all disabled:opacity-50"
                       value={editingRole?.name}
-                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, name: e.target.value.toUpperCase().replace(/\s/g, '_') } : null)}
-                      placeholder="E.g. MODERATOR"
+                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, name: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') } : null)}
+                      placeholder="MODERATOR"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Відображувана назва</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Назва ролі</label>
                     <input 
                       type="text"
                       className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
                       value={editingRole?.label}
                       onChange={(e) => setEditingRole(prev => prev ? { ...prev, label: e.target.value } : null)}
-                      placeholder="E.g. Модератор"
+                      placeholder="Модератор"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Емодзі</label>
-                    <input 
+                {/* Emoji Selection */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Іконка ролі</label>
+                  <div className="flex flex-wrap gap-2">
+                    {ROLE_EMOJIS.map((emoji) => (
+                      <motion.button
+                        key={emoji}
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setEditingRole(prev => prev ? { ...prev, emoji } : null)}
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all ${
+                          editingRole?.emoji === emoji 
+                            ? 'bg-amber-500 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400' 
+                            : 'bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        {emoji}
+                      </motion.button>
+                    ))}
+                    <input
                       type="text"
-                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-center text-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                      className="w-12 h-12 rounded-xl bg-white/5 text-center text-xl border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                       value={editingRole?.emoji}
-                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, emoji: e.target.value } : null)}
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Сила (0-100)</label>
-                    <input 
-                      type="number"
-                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                      value={editingRole?.power}
-                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, power: parseInt(e.target.value) || 0 } : null)}
+                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, emoji: e.target.value.slice(-2) } : null)}
+                      maxLength={2}
+                      title="Або введіть свой емодзі"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Градієнт (Tailwind класи)</label>
-                  <input 
-                    type="text"
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                    value={editingRole?.color}
-                    onChange={(e) => setEditingRole(prev => prev ? { ...prev, color: e.target.value } : null)}
-                    placeholder="from-amber-500 to-yellow-500"
-                  />
+                {/* Color Theme Selection */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Колір ролі</label>
+                  <div className="grid grid-cols-5 gap-3">
+                    {COLOR_THEMES.map((theme) => (
+                      <motion.button
+                        key={theme.name}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setEditingRole(prev => prev ? { ...prev, color: theme.color, textColor: theme.textColor } : null)}
+                        className={`relative h-14 rounded-xl ${theme.preview} overflow-hidden transition-all ${
+                          editingRole?.color === theme.color 
+                            ? 'ring-2 ring-white shadow-lg' 
+                            : 'opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="absolute inset-0 flex items-end justify-center pb-1">
+                          <span className="text-[9px] font-bold text-white/90 drop-shadow-lg">{theme.name}</span>
+                        </div>
+                        {editingRole?.color === theme.color && (
+                          <motion.div 
+                            className="absolute inset-0 border-2 border-white rounded-xl"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                          />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Колір тексту (Tailwind клас)</label>
-                  <input 
-                    type="text"
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                    value={editingRole?.textColor}
-                    onChange={(e) => setEditingRole(prev => prev ? { ...prev, textColor: e.target.value } : null)}
-                    placeholder="text-amber-400"
-                  />
+                {/* Power Slider */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Сила ролі</label>
+                    <span className="text-sm font-black text-amber-400">{editingRole?.power || 0}</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={editingRole?.power || 0}
+                      onChange={(e) => setEditingRole(prev => prev ? { ...prev, power: parseInt(e.target.value) } : null)}
+                      className="w-full h-3 rounded-full appearance-none bg-zinc-800 cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
+                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:cursor-pointer
+                        [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-amber-500/30"
+                    />
+                    <div className="flex justify-between mt-2 px-1">
+                      <span className="text-[9px] text-zinc-600">Новачок (0)</span>
+                      <span className="text-[9px] text-zinc-600">Лідер (100)</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-600 px-1">
+                    Чим більше сила, тим більше прав. Роль з силою 80 може керувати ролями з силою до 79.
+                  </p>
                 </div>
 
+                {/* Description */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Опис</label>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Опис <span className="text-zinc-600">(опціонально)</span></label>
                   <textarea 
                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all min-h-[80px]"
-                    value={editingRole?.desc}
+                    value={editingRole?.desc || ''}
                     onChange={(e) => setEditingRole(prev => prev ? { ...prev, desc: e.target.value } : null)}
+                    placeholder="Що може робити ця роль?"
                   />
                 </div>
 
+                {/* Actions */}
                 <div className="flex gap-3 pt-4">
                   <button 
                     onClick={() => { setEditingRole(null); setIsAdding(false); }}
@@ -408,8 +499,9 @@ export function AdminSettingsClient() {
                   </button>
                   <button 
                     onClick={() => editingRole && saveRole(editingRole)}
-                    className="flex-[2] rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 py-4 text-sm font-black text-white uppercase tracking-widest shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    className="flex-[2] rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 py-4 text-sm font-black text-white uppercase tracking-widest shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
+                    <Save className="w-5 h-5" />
                     Зберегти
                   </button>
                 </div>
