@@ -57,7 +57,7 @@ export function Header() {
       } catch (e) {}
     };
     fetchStats();
-    const statsInterval = setInterval(fetchStats, 60000); // Refresh every minute
+    const statsInterval = setInterval(fetchStats, 10000); // Refresh every 10 seconds for real-time feel
     return () => clearInterval(statsInterval);
   }, []);
 
@@ -117,10 +117,17 @@ export function Header() {
           >
             <div className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
             </div>
-            <span className="text-xs font-bold text-green-400">{onlineCount}</span>
-            <Users className="w-3 h-3 text-green-500" />
+            <motion.span 
+              key={onlineCount}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs font-black text-green-400 min-w-[1ch] text-center"
+            >
+              {onlineCount}
+            </motion.span>
+            <Users className="w-3.5 h-3.5 text-green-500/80" />
           </motion.div>
 
           {/* Desktop Navigation */}
@@ -351,40 +358,59 @@ export function Header() {
       </div>
 
       {/* Top Contributors Ticker */}
-      {topContributors.length > 0 && (
-        <div className="border-t border-white/5 bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5 overflow-hidden">
-          <div className="relative flex overflow-hidden py-1.5">
-            <motion.div
-              className="flex gap-8 whitespace-nowrap"
-              animate={{ x: ["-100%", "0%"] }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            >
-              {[...topContributors, ...topContributors].map((c, idx) => (
-                <div key={`${c.id}-${idx}`} className="flex items-center gap-2 text-xs">
-                  <span className="text-amber-500">🏆</span>
-                  <span className="font-bold text-white">{c.name}</span>
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-amber-400 font-medium">{c.totalAmount.toFixed(0)}₴</span>
+      <div className="border-t border-white/5 bg-black/40 overflow-hidden h-9 flex items-center">
+        <div className="flex whitespace-nowrap">
+          <motion.div
+            className="flex gap-12 items-center px-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          >
+            {/* If no contributors, show placeholders to make it "wow" always */}
+            {(topContributors.length > 0 ? [...topContributors, ...topContributors, ...topContributors, ...topContributors] : [
+              { name: "Очікуємо лідерів...", totalAmount: 0 },
+              { name: "Склад поповнюється...", totalAmount: 0 },
+              { name: "Будь першим!", totalAmount: 0 }
+            ].map(x => ({ ...x, id: Math.random().toString() }))).map((c: any, idx) => (
+              <div key={`${c.id}-${idx}`} className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">🏆</span>
+                  <span className="font-black text-[11px] text-white uppercase tracking-tighter">{c.name}</span>
                 </div>
-              ))}
-            </motion.div>
-            <motion.div
-              className="flex gap-8 whitespace-nowrap absolute left-full"
-              animate={{ x: ["-100%", "0%"] }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            >
-              {[...topContributors, ...topContributors].map((c, idx) => (
-                <div key={`${c.id}-dup-${idx}`} className="flex items-center gap-2 text-xs">
-                  <span className="text-amber-500">🏆</span>
-                  <span className="font-bold text-white">{c.name}</span>
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-amber-400 font-medium">{c.totalAmount.toFixed(0)}₴</span>
+                {c.totalAmount > 0 && (
+                  <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toFixed(0)}₴</span>
+                  </div>
+                )}
+                <span className="text-zinc-800 font-black">/</span>
+              </div>
+            ))}
+          </motion.div>
+          <motion.div
+            className="flex gap-12 items-center px-4"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          >
+            {(topContributors.length > 0 ? [...topContributors, ...topContributors, ...topContributors, ...topContributors] : [
+              { name: "Очікуємо лідерів...", totalAmount: 0 },
+              { name: "Склад поповнюється...", totalAmount: 0 },
+              { name: "Будь першим!", totalAmount: 0 }
+            ].map(x => ({ ...x, id: Math.random().toString() }))).map((c: any, idx) => (
+              <div key={`${c.id}-dup-${idx}`} className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">🏆</span>
+                  <span className="font-black text-[11px] text-white uppercase tracking-tighter">{c.name}</span>
                 </div>
-              ))}
-            </motion.div>
-          </div>
+                {c.totalAmount > 0 && (
+                  <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toFixed(0)}₴</span>
+                  </div>
+                )}
+                <span className="text-zinc-800 font-black">/</span>
+              </div>
+            ))}
+          </motion.div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

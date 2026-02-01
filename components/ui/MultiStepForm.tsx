@@ -255,38 +255,72 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               <Coins className="w-20 h-20 mx-auto text-amber-400" />
             </motion.div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 5 з {totalSteps}</h2>
-            <p className="text-xl text-zinc-300 mb-8">Скільки зірочок здас на склад?</p>
-            <div className="space-y-6">
+            <p className="text-xl text-zinc-300 mb-8">Скільки одиниць здас?</p>
+            <div className="space-y-4">
               {[1, 2, 3].map((stars) => (
                 <motion.div
                   key={stars}
                   initial={{ opacity: 0, x: -50 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: stars * 0.1 }}
-                  className="flex items-center justify-between bg-zinc-800/30 p-4 rounded-lg"
+                  className="flex items-center justify-between bg-zinc-800/30 p-4 rounded-2xl border border-white/5"
                 >
-                  <span className="text-xl text-white flex items-center gap-2">
-                    {Array.from({ length: stars }).map((_, i) => (
-                      <span key={i} className="text-2xl">⭐</span>
-                    ))}
-                  </span>
-                  <motion.input
-                    whileFocus={{ scale: 1.05 }}
-                    type="number"
-                    min="0"
-                    value={formData.quantities[`stars${stars}` as keyof typeof formData.quantities]}
-                    onChange={(e) => updateFormData({
-                      quantities: {
-                        ...formData.quantities,
-                        [`stars${stars}`]: parseInt(e.target.value) || 0
-                      }
-                    })}
-                    placeholder="0"
-                    className="w-24 px-4 py-2 text-center bg-zinc-700/50 border border-zinc-600 rounded-lg text-white focus:outline-none focus:border-amber-400"
-                  />
+                  <div className="flex flex-col items-start">
+                    <span className="text-xl text-white flex items-center gap-1">
+                      {Array.from({ length: stars }).map((_, i) => (
+                        <span key={i} className="text-xl">⭐</span>
+                      ))}
+                    </span>
+                    <span className="text-[10px] font-black text-amber-500/60 uppercase tracking-widest mt-1">
+                      Ціна: {getPrice(stars)}₴ / шт
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => {
+                        const val = formData.quantities[`stars${stars}` as keyof typeof formData.quantities];
+                        updateFormData({ quantities: { ...formData.quantities, [`stars${stars}`]: Math.max(0, val - 1) } });
+                      }}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white hover:bg-white/10"
+                    >
+                      -
+                    </button>
+                    <motion.input
+                      whileFocus={{ scale: 1.05 }}
+                      type="number"
+                      min="0"
+                      value={formData.quantities[`stars${stars}` as keyof typeof formData.quantities]}
+                      onChange={(e) => updateFormData({
+                        quantities: {
+                          ...formData.quantities,
+                          [`stars${stars}`]: Math.max(0, parseInt(e.target.value) || 0)
+                        }
+                      })}
+                      placeholder="0"
+                      className="w-20 px-4 py-2 text-center text-lg font-black bg-zinc-950/50 border border-amber-500/20 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    />
+                    <button 
+                      onClick={() => {
+                        const val = formData.quantities[`stars${stars}` as keyof typeof formData.quantities];
+                        updateFormData({ quantities: { ...formData.quantities, [`stars${stars}`]: val + 1 } });
+                      }}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl bg-amber-500 text-white hover:bg-amber-400"
+                    >
+                      +
+                    </button>
+                  </div>
                 </motion.div>
               ))}
             </div>
+            {totalQuantity > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-bold"
+              >
+                Попередній підсумок: {(formData.quantities.stars1 * getPrice(1) + formData.quantities.stars2 * getPrice(2) + formData.quantities.stars3 * getPrice(3))}₴
+              </motion.div>
+            )}
           </motion.div>
         );
 
@@ -311,16 +345,33 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             </motion.div>
             <h2 className="text-3xl font-bold text-white mb-4">Крок 6 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Розрахунок винагороди</p>
-            <div className="bg-zinc-800/30 p-6 rounded-xl space-y-4">
-              <div className="text-lg text-zinc-300">
-                <p>⭐ 1 зірка: {formData.quantities.stars1} шт × {getPrice(1)}₴ = {formData.quantities.stars1 * getPrice(1)}₴</p>
-                <p>⭐⭐ 2 зірки: {formData.quantities.stars2} шт × {getPrice(2)}₴ = {formData.quantities.stars2 * getPrice(2)}₴</p>
-                <p>⭐⭐⭐ 3 зірки: {formData.quantities.stars3} шт × {getPrice(3)}₴ = {formData.quantities.stars3 * getPrice(3)}₴</p>
+            <div className="bg-zinc-800/50 p-8 rounded-[2rem] border border-white/5 space-y-4 shadow-2xl">
+              <div className="space-y-3">
+                {formData.quantities.stars1 > 0 && (
+                  <div className="flex justify-between items-center text-zinc-300">
+                    <span className="font-bold">⭐ 1 зірка ({formData.quantities.stars1} шт)</span>
+                    <span className="font-black text-white">{formData.quantities.stars1 * getPrice(1)}₴</span>
+                  </div>
+                )}
+                {formData.quantities.stars2 > 0 && (
+                  <div className="flex justify-between items-center text-zinc-300">
+                    <span className="font-bold">⭐⭐ 2 зірки ({formData.quantities.stars2} шт)</span>
+                    <span className="font-black text-white">{formData.quantities.stars2 * getPrice(2)}₴</span>
+                  </div>
+                )}
+                {formData.quantities.stars3 > 0 && (
+                  <div className="flex justify-between items-center text-zinc-300">
+                    <span className="font-bold">⭐⭐⭐ 3 зірки ({formData.quantities.stars3} шт)</span>
+                    <span className="font-black text-white">{formData.quantities.stars3 * getPrice(3)}₴</span>
+                  </div>
+                )}
               </div>
-              <div className="border-t border-zinc-600 pt-4">
-                <p className="text-2xl font-bold text-green-400">
-                  Загалом: {(formData.quantities.stars1 * getPrice(1) + formData.quantities.stars2 * getPrice(2) + formData.quantities.stars3 * getPrice(3))}₴
-                </p>
+              
+              <div className="border-t border-white/10 pt-4 flex justify-between items-center">
+                <span className="text-lg font-black text-zinc-400 uppercase tracking-widest">Разом:</span>
+                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-600 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                  {(formData.quantities.stars1 * getPrice(1) + formData.quantities.stars2 * getPrice(2) + formData.quantities.stars3 * getPrice(3))}₴
+                </span>
               </div>
             </div>
           </motion.div>
