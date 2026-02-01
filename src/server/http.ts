@@ -13,8 +13,12 @@ export function jsonError(error: unknown) {
     );
   }
 
+  // Log actual error for debugging
+  console.error("[API Error]", error);
+
+  const message = error instanceof Error ? error.message : "Internal error";
   return NextResponse.json(
-    { ok: false, error: { code: "INTERNAL_ERROR", message: "Internal error" } },
+    { ok: false, error: { code: "INTERNAL_ERROR", message } },
     { status: 500 },
   );
 }
