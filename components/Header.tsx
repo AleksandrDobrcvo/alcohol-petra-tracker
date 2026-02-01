@@ -166,13 +166,38 @@ export function Header() {
                 <div className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl">
                   <div className="flex items-center gap-3">
                     {/* Mobile Bell & Refresh */}
-                    <button className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-zinc-400">
-                      <Bell className="w-5 h-5" />
-                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                      </span>
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setNotifOpen(!notifOpen)}
+                        className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-zinc-400"
+                      >
+                        <Bell className="w-5 h-5" />
+                        <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                      </button>
+                      {/* Mobile Notification Dropdown */}
+                      {notifOpen && (
+                        <div className="absolute left-0 bottom-full mb-2 w-72 rounded-2xl border border-white/10 bg-[#0a0d10]/98 backdrop-blur-xl shadow-2xl z-50">
+                          <div className="p-4 border-b border-white/5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-white">🔔 Сповіщення</span>
+                              <button onClick={() => setNotifOpen(false)} className="text-zinc-500 hover:text-white">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="max-h-60 overflow-y-auto">
+                            <div className="p-4 text-center text-zinc-500 text-sm">
+                              <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                              <p>Нових сповіщень немає</p>
+                              <p className="text-xs text-zinc-600 mt-1">Тут будуть статуси заявок</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <button 
                       onClick={handleRefreshSession}
                       disabled={refreshing}
