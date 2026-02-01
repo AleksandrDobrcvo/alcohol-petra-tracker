@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
+  Settings,
+  LayoutDashboard,
   RefreshCcw, 
   User, 
   FileText, 
@@ -30,13 +32,21 @@ type AuditRow = {
   actor: { id: string; name: string; role: string };
 };
 
-// Parse JSON data safely
+// Parse JSON data safely and recursively to handle double stringification
 function parseData(data: unknown): Record<string, unknown> | null {
   if (!data) return null;
-  if (typeof data === 'object') return data as Record<string, unknown>;
+  if (typeof data === 'object' && data !== null) return data as Record<string, unknown>;
   if (typeof data === 'string') {
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // If the result is still a string and looks like JSON, try one more time
+      if (typeof parsed === 'string' && (parsed.startsWith('{') || parsed.startsWith('['))) {
+        return parseData(parsed);
+      }
+      if (typeof parsed === 'object' && parsed !== null) {
+        return parsed as Record<string, unknown>;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -47,17 +57,21 @@ function parseData(data: unknown): Record<string, unknown> | null {
 // Get action icon and color
 function getActionStyle(action: string) {
   const styles: Record<string, { icon: typeof User; color: string; bg: string; label: string }> = {
-    USER_ROLE_CHANGE: { icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Зміна ролі' },
-    USER_APPROVE: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/20', label: 'Підтвердження' },
-    USER_BLOCK: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Блокування' },
-    ENTRY_CREATE: { icon: Plus, color: 'text-sky-400', bg: 'bg-sky-500/20', label: 'Створення запису' },
-    ENTRY_UPDATE: { icon: Edit2, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Редагування запису' },
-    ENTRY_DELETE: { icon: Trash2, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Видалення запису' },
-    REQUEST_CREATE: { icon: FileText, color: 'text-sky-400', bg: 'bg-sky-500/20', label: 'Нова заявка' },
-    REQUEST_DECISION: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/20', label: 'Рішення заявки' },
-    PRICE_UPDATE: { icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Зміна ціни' },
+    USER_ROLE_CHANGE: { icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Зміна ролі' },
+    USER_APPROVE: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Підтвердження' },
+    USER_BLOCK_CHANGE: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Бан / Розбан' },
+    USER_BLOCK: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Блокування' },
+    ENTRY_CREATE: { icon: Plus, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20', label: 'Створення запису' },
+    ENTRY_UPDATE: { icon: Edit2, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Редагування запису' },
+    ENTRY_DELETE: { icon: Trash2, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Видалення запису' },
+    REQUEST_CREATE: { icon: FileText, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20', label: 'Нова заявка' },
+    REQUEST_DECISION: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Рішення заявки' },
+    PRICE_UPDATE: { icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Зміна ціни' },
+    MAINTENANCE_TOGGLE: { icon: Settings, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10 border-fuchsia-500/20', label: 'Тех. роботи' },
+    PUBLIC_TOKEN_CREATE: { icon: Plus, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20', label: 'Публічне посилання' },
+    PUBLIC_TOKEN_REVOKE: { icon: Trash2, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Відклик посилання' },
   };
-  return styles[action] || { icon: Eye, color: 'text-zinc-400', bg: 'bg-zinc-500/20', label: action };
+  return styles[action] || { icon: Eye, color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', label: action };
 }
 
 // Get role badge
@@ -74,36 +88,48 @@ function getRoleBadge(role: string) {
 }
 
 // Format value for display
-function formatValue(key: string, value: unknown): string {
+function formatValue(key: string, value: unknown): React.ReactNode {
   if (value === null || value === undefined) return '-';
   if (key === 'role') {
     const badge = getRoleBadge(String(value));
-    return badge.label.replace(/[\ud83d\udc51\u2b50\ud83d\udee1\ufe0f\ud83c\udf7a\ud83c\udf3f\u2705]/g, '').trim();
+    return (
+      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${badge.color}`}>
+        {badge.label}
+      </span>
+    );
   }
   if (key === 'status') {
-    const statuses: Record<string, string> = {
-      PENDING: '⏳ Очікує',
-      APPROVED: '✅ Схвалено',
-      REJECTED: '❌ Відхилено',
-      PAID: '💰 Оплачено',
-      UNPAID: '⏳ Не оплачено',
+    const statuses: Record<string, { label: string; color: string }> = {
+      PENDING: { label: '⏳ Очікує', color: 'text-amber-400' },
+      APPROVED: { label: '✅ Схвалено', color: 'text-emerald-400' },
+      REJECTED: { label: '❌ Відхилено', color: 'text-red-400' },
+      PAID: { label: '💰 Оплачено', color: 'text-sky-400' },
+      UNPAID: { label: '⏳ Не оплачено', color: 'text-zinc-400' },
     };
-    return statuses[String(value)] || String(value);
+    const s = statuses[String(value)];
+    return s ? <span className={s.color}>{s.label}</span> : String(value);
   }
   if (key === 'type') {
     return value === 'ALCO' ? '🍺 Алко' : value === 'PETRA' ? '🌿 Петра' : String(value);
   }
   if (key === 'amount' && typeof value === 'number') {
-    return `${value.toFixed(2)} ₴`;
+    return <span className="text-white font-mono">{value.toLocaleString('uk-UA')} ₴</span>;
   }
   if (key === 'stars' && typeof value === 'number') {
-    return '⭐'.repeat(value);
+    return <span className="text-amber-400">{'★'.repeat(value)}</span>;
   }
   if (key === 'date' && typeof value === 'string') {
     return new Date(value).toLocaleDateString('uk-UA');
   }
+  if (key === 'unbanDate' && typeof value === 'string') {
+    return new Date(value).toLocaleString('uk-UA');
+  }
   if (typeof value === 'boolean') {
-    return value ? '✅ Так' : '❌ Ні';
+    return value ? <span className="text-emerald-400">✅ ТАК</span> : <span className="text-red-400">❌ НІ</span>;
+  }
+  if (key === 'stars1Qty' || key === 'stars2Qty' || key === 'stars3Qty') {
+    const stars = key.includes('1') ? 1 : key.includes('2') ? 2 : 3;
+    return <span>{String(value)} шт ({stars}★)</span>;
   }
   return String(value);
 }
@@ -123,10 +149,26 @@ function getFieldLabel(key: string): string {
     date: 'Дата',
     submitterId: 'Користувач',
     decisionNote: 'Коментар',
-    isBlocked: 'Блокування',
+    isBlocked: 'Бан-статус',
     isApproved: 'Підтверджений',
     screenshotPath: 'Скріншот',
     cardLastDigits: 'Карта',
+    banReason: 'Причина бана',
+    unbanDate: 'Дата розбану',
+    moderatesAlco: 'Алко-модер',
+    moderatesPetra: 'Петра-модер',
+    stars1Qty: '1★ К-сть',
+    stars2Qty: '2★ К-сть',
+    stars3Qty: '3★ К-сть',
+    totalAmount: 'Загальна сума',
+    label: 'Назва',
+    color: 'Колір',
+    emoji: 'Емодзі',
+    power: 'Сила',
+    desc: 'Опис',
+    price: 'Ціна',
+    isFrozen: 'Заморозка',
+    frozenReason: 'Причина заморозки',
   };
   return labels[key] || key;
 }
@@ -228,44 +270,65 @@ export function AdminAuditClient() {
                   </div>
 
                   {/* Changes */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 p-4 md:p-6 gap-6">
                     {/* Before */}
-                    <div className="bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="h-2 w-2 rounded-full bg-red-500" />
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Було</span>
+                    <div className="relative rounded-3xl bg-black/40 border border-white/5 p-5 shadow-inner">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Було</span>
+                        </div>
+                        {beforeData && <span className="text-[10px] text-zinc-700 italic">Колишній стан</span>}
                       </div>
                       {beforeData ? (
-                        <div className="space-y-2">
-                          {Object.entries(beforeData).filter(([k]) => k !== 'screenshotPath').map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-zinc-500">{getFieldLabel(key)}</span>
-                              <span className="text-sm font-medium text-zinc-300">{formatValue(key, value)}</span>
+                        <div className="space-y-3">
+                          {Object.entries(beforeData)
+                            .filter(([k]) => k !== 'screenshotPath' && k !== 'id' && k !== 'updatedAt' && k !== 'createdAt')
+                            .map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between gap-4 border-b border-white/[0.02] pb-2 last:border-0 last:pb-0">
+                              <span className="text-[11px] font-bold text-zinc-500">{getFieldLabel(key)}</span>
+                              <div className="text-xs text-zinc-400 font-medium">{formatValue(key, value)}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-600 italic">Немає даних</span>
+                        <div className="flex flex-col items-center justify-center py-4 text-center">
+                          <div className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Дані відсутні</div>
+                        </div>
                       )}
                     </div>
 
                     {/* After */}
-                    <div className="bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Стало</span>
+                    <div className="relative rounded-3xl bg-white/[0.03] border border-white/10 p-5 shadow-2xl">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Стало</span>
+                        </div>
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                          <ArrowRight className="w-3 h-3 text-emerald-500" />
+                        </div>
                       </div>
                       {afterData ? (
-                        <div className="space-y-2">
-                          {Object.entries(afterData).filter(([k]) => k !== 'screenshotPath').map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-zinc-500">{getFieldLabel(key)}</span>
-                              <span className="text-sm font-medium text-emerald-300">{formatValue(key, value)}</span>
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {Object.entries(afterData)
+                            .filter(([k]) => k !== 'screenshotPath' && k !== 'id' && k !== 'updatedAt' && k !== 'createdAt')
+                            .map(([key, value]) => {
+                            const isChanged = beforeData && (beforeData as any)[key] !== value;
+                            return (
+                              <div key={key} className={`flex items-center justify-between gap-4 border-b border-white/[0.02] pb-2 last:border-0 last:pb-0 ${isChanged ? 'animate-pulse-subtle' : ''}`}>
+                                <span className="text-[11px] font-bold text-zinc-500">{getFieldLabel(key)}</span>
+                                <div className={`text-xs font-black ${isChanged ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                  {formatValue(key, value)}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-600 italic">Немає даних</span>
+                        <div className="flex flex-col items-center justify-center py-4 text-center">
+                          <div className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Об'єкт видалено</div>
+                        </div>
                       )}
                     </div>
                   </div>

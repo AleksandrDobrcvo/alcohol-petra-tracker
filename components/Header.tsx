@@ -12,7 +12,10 @@ export function Header() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const isAdmin = session?.user?.role === "LEADER" || session?.user?.role === "DEPUTY" || session?.user?.role === "SENIOR";
-  const canSeeRequests = isAdmin || 
+  const myDiscordId = (session?.user as any)?.discordId;
+  const isRoot = myDiscordId === "1223246458975686750";
+
+  const canSeeRequests = isAdmin || isRoot ||
     session?.user?.role === "ALCO_STAFF" || 
     session?.user?.role === "PETRA_STAFF" || 
     session?.user?.moderatesAlco || 
@@ -21,11 +24,13 @@ export function Header() {
   // Role badge config
   const getRoleBadge = () => {
     if (!session?.user) return { label: '', color: '' };
+    if (isRoot) return { label: '💎 ROOT', color: 'bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white shadow-lg shadow-fuchsia-500/20' };
+    
     const role = session.user.role;
     const isApproved = session.user.isApproved;
     
-    if (role === 'LEADER') return { label: '👑 Лідер', color: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black' };
-    if (role === 'DEPUTY') return { label: '⭐ Заступник', color: 'bg-gradient-to-r from-amber-400 to-orange-400 text-black' };
+    if (role === 'LEADER') return { label: '👑 Лідер', color: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/20' };
+    if (role === 'DEPUTY') return { label: '⭐ Заступник', color: 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-lg shadow-orange-500/20' };
     if (role === 'SENIOR') return { label: '🛡️ Старший', color: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' };
     if (role === 'ALCO_STAFF') return { label: '🍺 Алко', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' };
     if (role === 'PETRA_STAFF') return { label: '🌿 Петра', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' };
@@ -57,11 +62,11 @@ export function Header() {
                 <span>📊 Статистика</span>
               </Link>
             )}
-            {isAdmin && (
-              <Link href="/admin/users" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
+            {isAdmin || isRoot ? (
+              <Link href="/admin/users" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15 transition-all">
                 🛠️ Адмінка
               </Link>
-            )}
+            ) : null}
             {canSeeRequests && (
               <Link href="/admin/requests" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
                 ✅ Заявки
@@ -158,11 +163,11 @@ export function Header() {
                     ✅ Перевірка заявок
                   </Link>
                 )}
-                {isAdmin && (
+                {isAdmin || isRoot ? (
                   <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-amber-500/10 px-4 py-3 text-amber-300">
                     🛠️ Адмін панель
                   </Link>
-                )}
+                ) : null}
                 <div className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl">
                   <div className="flex items-center gap-3">
                     {/* Mobile Bell & Refresh */}

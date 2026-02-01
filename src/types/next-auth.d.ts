@@ -9,6 +9,8 @@ declare module "next-auth" {
       image?: string | null;
       role: "LEADER" | "DEPUTY" | "SENIOR" | "ALCO_STAFF" | "PETRA_STAFF" | "MEMBER";
       isBlocked: boolean;
+      banReason?: string | null;
+      unbanDate?: string | null;
       isApproved: boolean;
       moderatesAlco: boolean;
       moderatesPetra: boolean;

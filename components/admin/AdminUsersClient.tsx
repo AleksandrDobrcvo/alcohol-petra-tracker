@@ -19,52 +19,77 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MaintenanceToggleClient } from "@/components/admin/MaintenanceToggleClient";
+import { useNotifications } from "@/components/ui/Toast";
 
 type UserRow = {
   id: string;
   discordId: string;
   name: string;
-  role: "LEADER" | "DEPUTY" | "SENIOR" | "ALCO_STAFF" | "PETRA_STAFF" | "MEMBER";
+  role: string;
   isBlocked: boolean;
+  banReason?: string | null;
+  unbanDate?: string | null;
   isApproved: boolean;
   cardNumber: string | null;
   moderatesAlco: boolean;
   moderatesPetra: boolean;
 };
 
+type RoleDef = {
+  name: string;
+  label: string;
+  emoji: string;
+  color: string;
+  textColor: string;
+  power: number;
+  desc?: string;
+};
+
 export function AdminUsersClient() {
   const { data: session } = useSession();
+  const { success, error: notifyError } = useNotifications();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [roles, setRoles] = useState<RoleDef[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [banModalUser, setBanModalUser] = useState<UserRow | null>(null);
+  const [banReasonInput, setBanReasonInput] = useState("");
+  const [unbanDateInput, setUnbanDateInput] = useState("");
   const [reason, setReason] = useState("");
 
-  // Role hierarchy - higher = more power
-  const ROLE_POWER: Record<string, number> = {
-    LEADER: 100,
-    DEPUTY: 80,
-    SENIOR: 60,
-    ALCO_STAFF: 40,
-    PETRA_STAFF: 40,
-    MEMBER: 20,
-  };
+  const ROOT_ID = "1223246458975686750";
+  const myDiscordId = (session?.user as any)?.discordId;
+  const isRoot = myDiscordId === ROOT_ID;
+
+  // Fallback role powers if not loaded from DB yet
+  const ROLE_POWER: Record<string, number> = roles.length > 0 
+    ? Object.fromEntries(roles.map(r => [r.name, r.power]))
+    : {
+        LEADER: 100,
+        DEPUTY: 80,
+        SENIOR: 60,
+        ALCO_STAFF: 40,
+        PETRA_STAFF: 40,
+        MEMBER: 20,
+      };
 
   const myRole = session?.user?.role || "MEMBER";
-  const myPower = ROLE_POWER[myRole] || 0;
+  const myPower = isRoot ? 999 : (ROLE_POWER[myRole] || 0);
 
   // Check if current user can modify target user
   function canModifyUser(target: UserRow): boolean {
-    if (myRole === "LEADER") return true;
+    if (isRoot) return true;
+    if (myRole === "LEADER" && target.discordId !== ROOT_ID) return true;
     const targetPower = ROLE_POWER[target.role] || 0;
     return targetPower < myPower;
   }
 
   // Check if current user can assign a specific role
-  function canAssignRole(role: string): boolean {
-    if (myRole === "LEADER") return true;
-    const rolePower = ROLE_POWER[role] || 0;
+  function canAssignRole(roleName: string): boolean {
+    if (isRoot) return true;
+    const rolePower = ROLE_POWER[roleName] || 0;
     return rolePower < myPower;
   }
 
@@ -72,10 +97,20 @@ export function AdminUsersClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/users", { cache: "no-store" });
-      const json = (await res.json()) as { ok: boolean; data?: { users: UserRow[] } };
-      if (!json.ok || !json.data) throw new Error("Failed to load users");
-      setUsers(json.data.users);
+      const [uRes, rRes] = await Promise.all([
+        fetch("/api/users", { cache: "no-store" }),
+        fetch("/api/admin/roles", { cache: "no-store" })
+      ]);
+      
+      const uJson = await uRes.json();
+      const rJson = await rRes.json();
+
+      if (!uJson.ok) throw new Error("Failed to load users");
+      setUsers(uJson.data.users);
+
+      if (rJson.ok) {
+        setRoles(rJson.data.roles);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -98,6 +133,7 @@ export function AdminUsersClient() {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error?.message ?? "Update failed");
       setReason("");
+      success("Успіх!", "Дані користувача оновлено");
       await load();
       // Update selected user if modal is open
       if (selectedUser && selectedUser.id === id) {
@@ -108,16 +144,46 @@ export function AdminUsersClient() {
     }
   }
 
-  async function setBlocked(id: string, isBlocked: boolean) {
+  async function handleBan(user: UserRow) {
+    if (!banReasonInput.trim()) {
+      notifyError("Помилка", "Необхідно вказати причину бана");
+      return;
+    }
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${user.id}/block`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ 
+          isBlocked: true, 
+          reason: banReasonInput,
+          unbanDate: unbanDateInput ? new Date(unbanDateInput).toISOString() : null
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error?.message ?? "Block update failed");
+      
+      success("Успіх!", `Користувача ${user.name} заблоковано`);
+      setBanModalUser(null);
+      setBanReasonInput("");
+      setUnbanDateInput("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleUnban(id: string) {
     setError(null);
     try {
       const res = await fetch(`/api/users/${id}/block`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ isBlocked }),
+        body: JSON.stringify({ isBlocked: false }),
       });
-      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
-      if (!json.ok) throw new Error(json.error?.message ?? "Block update failed");
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error?.message ?? "Unblock failed");
+      success("Успіх!", "Користувача розблоковано");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -195,39 +261,31 @@ export function AdminUsersClient() {
               <div key={i} className="h-48 animate-pulse rounded-3xl bg-white/5 border border-white/10" />
             ))
           ) : (
-            filteredUsers.map((u, idx) => (
-              <motion.div
-                key={u.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: idx * 0.05 }}
-                className={`group relative rounded-3xl border border-white/10 p-6 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.07] hover:border-white/20 ${u.isBlocked ? 'opacity-60 grayscale' : ''}`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 text-xl shadow-inner">
-                      👤
+            filteredUsers.map((u, idx) => {
+              const roleDef = roles.find(r => r.name === u.role);
+              return (
+                <motion.div
+                  key={u.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`group relative rounded-3xl border border-white/10 p-6 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.07] hover:border-white/20 ${u.isBlocked ? 'opacity-60 grayscale' : ''}`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${roleDef?.color || 'from-zinc-800 to-zinc-900'} border border-white/10 text-xl shadow-inner`}>
+                        {roleDef?.emoji || '👤'}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white leading-none mb-1">{u.name}</h3>
+                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{u.discordId}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-white leading-none mb-1">{u.name}</h3>
-                      <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{u.discordId}</p>
+                    <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 ${roleDef?.textColor || 'text-zinc-400'}`}>
+                      {roleDef?.label || u.role}
                     </div>
                   </div>
-                  <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                    u.role === 'LEADER' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                    u.role === 'DEPUTY' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
-                    u.role === 'SENIOR' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                    'bg-zinc-500/20 text-zinc-400 border border-zinc-500/30'
-                  }`}>
-                    {u.role === 'LEADER' ? 'Лідер' : 
-                     u.role === 'DEPUTY' ? 'Заступник' : 
-                     u.role === 'SENIOR' ? 'Старший' : 
-                     u.role === 'ALCO_STAFF' ? 'Сл. Алко' : 
-                     u.role === 'PETRA_STAFF' ? 'Сл. Петра' : 
-                     'Учасник'}
-                  </div>
-                </div>
 
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center justify-between text-xs">
@@ -279,24 +337,106 @@ export function AdminUsersClient() {
                   </button>
 
                   <button
-                    onClick={() => setBlocked(u.id, !u.isBlocked)}
+                    onClick={() => {
+                      if (u.isBlocked) {
+                        handleUnban(u.id);
+                      } else {
+                        setBanModalUser(u);
+                      }
+                    }}
+                    disabled={!canModifyUser(u)}
                     className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                       u.isBlocked 
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
+                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-110 active:scale-95' 
                         : 'bg-white/5 text-zinc-500 border border-white/10 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20'
-                    }`}
+                    } disabled:opacity-20 disabled:cursor-not-allowed`}
                     title={u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
                   >
                     <UserX className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
-            ))
+            );
+          })
           )}
         </AnimatePresence>
       </div>
 
       {/* Role Management Modal */}
+      {/* Ban Management Modal */}
+      <AnimatePresence>
+        {banModalUser && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setBanModalUser(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 40 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-[3rem] border border-red-500/30 bg-zinc-950 p-8 shadow-[0_0_100px_rgba(239,68,68,0.2)]"
+            >
+              <div className="text-center mb-8">
+                <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-gradient-to-br from-red-600 to-red-950 text-5xl shadow-[0_10px_40px_rgba(220,38,38,0.4)] ring-4 ring-red-500/20 animate-pulse">
+                  🚫
+                </div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Блокування доступу</h2>
+                <p className="text-sm text-zinc-400 mt-2 font-medium">Ви збираєтесь заблокувати <span className="text-red-400 font-bold">{banModalUser.name}</span></p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-red-500/70 uppercase tracking-[0.2em] px-2">Причина бана (Обов'язково)</label>
+                  <textarea
+                    placeholder="Наприклад: Порушення правил клану, неадекватна поведінка..."
+                    className="w-full rounded-[1.8rem] border border-white/5 bg-white/5 p-5 text-sm text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all min-h-[120px] shadow-inner"
+                    value={banReasonInput}
+                    onChange={(e) => setBanReasonInput(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] px-2">Дата розбану (Опціонально)</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all"
+                    value={unbanDateInput}
+                    onChange={(e) => setUnbanDateInput(e.target.value)}
+                  />
+                  <p className="text-[10px] text-zinc-600 px-2 italic">Залиште порожнім для перманентного бана</p>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                  <p className="text-[10px] text-red-300 leading-tight">
+                    Це дія обмежить користувачеві доступ до всіх функцій сайту. Ви впевнені?
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => setBanModalUser(null)}
+                    className="flex-1 rounded-[1.5rem] bg-white/5 px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    Відмінити
+                  </button>
+                  <button
+                    onClick={() => handleBan(banModalUser)}
+                    className="flex-[2] rounded-[1.5rem] bg-gradient-to-r from-red-600 to-red-800 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-red-900/40 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    ПІДТВЕРДИТИ БАН
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {selectedUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -333,64 +473,55 @@ export function AdminUsersClient() {
                     </div>
                   )}
                   <div className="grid grid-cols-1 gap-3">
-                    {(['LEADER', 'DEPUTY', 'SENIOR', 'ALCO_STAFF', 'PETRA_STAFF', 'MEMBER'] as const).map((r) => {
-                      const canAssign = canAssignRole(r);
-                      const isCurrentRole = selectedUser.role === r;
+                    {roles.map((r) => {
+                      const canAssign = canAssignRole(r.name);
+                      const isCurrentRole = selectedUser.role === r.name;
                       const isSameUser = selectedUser.id === session?.user?.id;
-                      const isDisabled = isCurrentRole || !canAssign || (isSameUser && myRole !== 'LEADER');
+                      const isDisabled = isCurrentRole || !canAssign || (isSameUser && !isRoot);
                       
                       return (
                         <button
-                          key={r}
-                          onClick={() => updatePermissions(selectedUser.id, { role: r })}
+                          key={r.name}
+                          onClick={() => updatePermissions(selectedUser.id, { role: r.name })}
                           disabled={isDisabled}
-                          className={`group relative flex items-center gap-4 rounded-[1.5rem] border p-4 text-left transition-all ${
+                          className={`group relative flex items-center gap-4 rounded-[1.8rem] border p-4 text-left transition-all duration-300 ${
                             isCurrentRole
-                              ? 'border-amber-500/50 bg-amber-500/10'
+                              ? `border-white/30 bg-gradient-to-br ${r.color} shadow-xl scale-[1.02]`
                               : !canAssign 
-                                ? 'border-white/5 bg-white/5 opacity-30 cursor-not-allowed' 
-                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20'
-                          } disabled:cursor-not-allowed`}
+                                ? 'border-white/5 bg-white/5 opacity-40 cursor-not-allowed grayscale' 
+                                : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 hover:scale-[1.02]'
+                          } disabled:cursor-not-allowed active:scale-95`}
                         >
-                          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                            r === 'LEADER' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
-                            r === 'DEPUTY' ? 'bg-sky-500/20 border-sky-500/30 text-sky-500' :
-                            r === 'SENIOR' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' :
-                            'bg-zinc-500/20 border-zinc-500/30 text-zinc-400'
-                          }`}>
-                            {r === 'LEADER' ? '👑' : r === 'DEPUTY' ? '🛡️' : r === 'SENIOR' ? '⚔️' : r.includes('STAFF') ? '📋' : '👤'}
+                          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border transition-all duration-300 ${
+                            isCurrentRole ? 'bg-black/20 border-white/40 rotate-6' : `bg-gradient-to-br ${r.color} border-white/20 group-hover:rotate-6`
+                          } text-2xl shadow-inner`}>
+                            {r.emoji}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <p className={`text-xs font-bold uppercase tracking-widest ${
-                                isCurrentRole ? 'text-white' : 'text-zinc-500'
+                              <p className={`text-sm font-black uppercase tracking-widest ${
+                                isCurrentRole ? 'text-white drop-shadow-md' : r.textColor
                               }`}>
-                                {r === 'LEADER' ? 'Лідер' : 
-                                 r === 'DEPUTY' ? 'Заступник' : 
-                                 r === 'SENIOR' ? 'Старший' : 
-                                 r === 'ALCO_STAFF' ? 'Сл. Алко' : 
-                                 r === 'PETRA_STAFF' ? 'Сл. Петра' : 
-                                 'Учасник'}
+                                {r.label}
                               </p>
+                              <span className="text-[10px] font-mono opacity-50">PW:{r.power}</span>
                               {!canAssign && !isCurrentRole && (
-                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/20 text-[10px] text-red-400 font-bold border border-red-500/20">
                                   🔒
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
-                              {r === 'LEADER' ? 'Повний доступ до всього' : 
-                               r === 'DEPUTY' ? 'Високий рівень доступу та керування' : 
-                               r === 'SENIOR' ? 'Розширені права модерації' :
-                               r === 'ALCO_STAFF' ? 'Модерація алкоголю' :
-                               r === 'PETRA_STAFF' ? 'Модерація петри' :
-                               'Звичайний учасник клану'}
+                            <p className={`text-[10px] ${isCurrentRole ? 'text-white/80' : 'text-zinc-500'} mt-1 leading-tight font-medium`}>
+                              {r.desc || "Немає опису"}
                             </p>
                           </div>
                           {isCurrentRole && (
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-black shadow-lg">
+                            <motion.div 
+                              layoutId="check"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-black text-[12px] font-black shadow-xl"
+                            >
                               ✓
-                            </div>
+                            </motion.div>
                           )}
                         </button>
                       );

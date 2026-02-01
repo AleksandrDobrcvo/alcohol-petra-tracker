@@ -8,6 +8,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model RoleDefinition {
+  id        String   @id @default(uuid())
+  name      String   @unique // internal name like LEADER
+  label     String   // display name like Лідер
+  emoji     String   @default("👤")
+  color     String   @default("from-sky-500/50 to-sky-600/50")
+  textColor String   @default("text-sky-400")
+  power     Int      @default(0)
+  desc      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id                String            @id @default(uuid())
   discordId         String            @unique
@@ -15,6 +28,8 @@ model User {
   role              String            @default("MEMBER")
   cardNumber        String?
   isBlocked         Boolean           @default(false)
+  banReason         String?
+  unbanDate         DateTime?
   isApproved        Boolean           @default(false)
   moderatesAlco     Boolean           @default(false)
   moderatesPetra    Boolean           @default(false)
@@ -43,17 +58,19 @@ model Entry {
   paidAt        DateTime?
   createdById   String
   updatedById   String?
+  requestId     String?       // Link to the request that created this entry
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   updatedBy     User?         @relation("EntryUpdater", fields: [updatedById], references: [id])
   createdBy     User          @relation("EntryCreator", fields: [createdById], references: [id])
   submitter     User          @relation("EntrySubmitter", fields: [submitterId], references: [id])
-  entryRequest  EntryRequest?
+  entryRequest  EntryRequest? @relation("RequestEntries", fields: [requestId], references: [id], onDelete: SetNull)
 
   @@index([date])
   @@index([submitterId])
   @@index([paymentStatus])
   @@index([type])
+  @@index([requestId])
 }
 
 model EntryRequest {
@@ -61,22 +78,23 @@ model EntryRequest {
   submitterId    String
   date           DateTime
   type           String
-  stars          Int
-  quantity       Int
-  amount         Float
+  // Multi-star quantities in one request
+  stars1Qty      Int       @default(0)
+  stars2Qty      Int       @default(0)
+  stars3Qty      Int       @default(0)
+  totalAmount    Float
   nickname       String
   screenshotPath String
   status         String    @default("PENDING")
   decidedAt      DateTime?
   decisionNote   String?
   decidedById    String?
-  relatedEntryId String?   @unique
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   cardLastDigits String?
-  relatedEntry   Entry?    @relation(fields: [relatedEntryId], references: [id])
   decidedBy      User?     @relation("RequestDecider", fields: [decidedById], references: [id])
   submitter      User      @relation("RequestSubmitter", fields: [submitterId], references: [id])
+  entries        Entry[]   @relation("RequestEntries")
 
   @@index([status])
   @@index([type])

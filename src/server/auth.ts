@@ -4,6 +4,7 @@ import { authOptions } from "@/src/server/authOptions";
 
 export type AuthContext = {
   userId: string;
+  discordId: string;
   role: "LEADER" | "DEPUTY" | "SENIOR" | "ALCO_STAFF" | "PETRA_STAFF" | "MEMBER";
   moderatesAlco: boolean;
   moderatesPetra: boolean;
@@ -27,6 +28,7 @@ export async function requireSession(): Promise<AuthContext> {
 
   return {
     userId: session.user.id,
+    discordId: (session.user as any).discordId || "",
     role: (session.user.role as any) || "MEMBER",
     moderatesAlco: session.user.moderatesAlco,
     moderatesPetra: session.user.moderatesPetra,

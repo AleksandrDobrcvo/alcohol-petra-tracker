@@ -5,6 +5,7 @@ import { assertCanModerateOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { ApiError } from "@/src/server/errors";
 import { writeAuditLog } from "@/src/server/audit";
+import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 
 const schema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
@@ -54,18 +55,34 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const entry = await tx.entry.create({
-        data: {
-          date: existing.date,
-          submitterId: existing.submitterId,
-          type: existing.type,
-          stars: existing.stars,
-          quantity: existing.quantity,
-          amount: existing.amount,
-          paymentStatus: "PAID",
-          createdById: ctx.userId,
-        },
-      });
+      const starLevels = [
+        { stars: 1, qty: (existing as any).stars1Qty },
+        { stars: 2, qty: (existing as any).stars2Qty },
+        { stars: 3, qty: (existing as any).stars3Qty },
+      ];
+
+      const entries = [];
+      for (const { stars, qty } of starLevels) {
+        if (qty <= 0) continue;
+
+        // Calculate amount for this specific entry
+        const { amount } = await calcQuantityAndAmount(existing.type as "ALCO" | "PETRA", stars, qty);
+
+        const entry = await tx.entry.create({
+          data: {
+            date: existing.date,
+            submitterId: existing.submitterId,
+            type: existing.type,
+            stars,
+            quantity: qty,
+            amount,
+            paymentStatus: "PAID",
+            createdById: ctx.userId,
+            requestId: id,
+          },
+        });
+        entries.push(entry);
+      }
 
       const updated = await tx.entryRequest.update({
         where: { id },
@@ -74,7 +91,6 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
           decisionNote: body.note ?? null,
           decidedAt: new Date(),
           decidedById: ctx.userId,
-          relatedEntryId: entry.id,
         },
         include: {
           submitter: { select: { id: true, name: true } },
@@ -82,7 +98,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
         },
       });
 
-      return { entry, request: updated };
+      return { entries, request: updated };
     });
 
     await writeAuditLog({
@@ -91,25 +107,27 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       targetType: "EntryRequest",
       targetId: id,
       before: { status: existing.status },
-      after: { status: result.request.status, relatedEntryId: result.request.relatedEntryId },
+      after: { status: result.request.status, entriesCount: result.entries.length },
     });
 
-    await writeAuditLog({
-      actorUserId: ctx.userId,
-      action: "ENTRY_CREATE_FROM_REQUEST",
-      targetType: "Entry",
-      targetId: result.entry.id,
-      after: {
-        requestId: id,
-        submitterId: result.entry.submitterId,
-        type: result.entry.type,
-        stars: result.entry.stars,
-        quantity: result.entry.quantity,
-        amount: result.entry.amount,
-      },
-    });
+    for (const entry of result.entries) {
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "ENTRY_CREATE_FROM_REQUEST",
+        targetType: "Entry",
+        targetId: entry.id,
+        after: {
+          requestId: id,
+          submitterId: entry.submitterId,
+          type: entry.type,
+          stars: entry.stars,
+          quantity: entry.quantity,
+          amount: entry.amount,
+        },
+      });
+    }
 
-    return jsonOk({ request: result.request, entry: result.entry });
+    return jsonOk({ request: result.request, entries: result.entries });
   } catch (e) {
     return jsonError(e);
   }

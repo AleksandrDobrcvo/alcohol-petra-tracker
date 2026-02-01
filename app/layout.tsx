@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import Footer from "@/components/ui/Footer";
 import BeerLoading from "@/components/ui/BeerLoading";
 import { ToastProvider } from "@/components/ui/Toast";
+import { BanGuard } from "@/components/BanGuard";
 
 export const metadata: Metadata = {
   title: {
@@ -33,11 +34,13 @@ export default function RootLayout({
         </div>
         <SessionProvider>
           <ToastProvider>
-            <Header />
-            <main className="flex-1 w-full">
-              {children}
-            </main>
-            <Footer />
+            <BanGuard>
+              <Header />
+              <main className="flex-1 w-full">
+                {children}
+              </main>
+              <Footer />
+            </BanGuard>
           </ToastProvider>
         </SessionProvider>
         <BeerLoading />

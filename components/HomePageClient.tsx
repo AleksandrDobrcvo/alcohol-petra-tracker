@@ -11,8 +11,27 @@ export default function HomePageClient() {
   const [showForm, setShowForm] = useState(false);
 
   const handleSubmit = async (formData: any) => {
-    // TODO: Implement form submission
-    console.log("Form submitted:", formData);
+    try {
+      const body = new FormData();
+      body.append("nickname", formData.nickname);
+      body.append("cardLastDigits", formData.cardLastDigits);
+      body.append("type", formData.type);
+      body.append("quantities", JSON.stringify(formData.quantities));
+      if (formData.screenshot) {
+        body.append("screenshot", formData.screenshot);
+      }
+
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        body: body,
+      });
+
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error?.message || "Помилка відправки");
+    } catch (e) {
+      console.error(e);
+      throw e; // MultiStepForm handles showing error or success
+    }
   };
 
   return (

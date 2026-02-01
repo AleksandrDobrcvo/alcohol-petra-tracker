@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, Beer, Sprout, Coins, Calendar, User, Package, X, Check } from "lucide-react";
+import { ChevronRight, ChevronLeft, Beer, Sprout, Coins, Calendar, User, Package, X, Check, Image as ImageIcon, Plus } from "lucide-react";
 
 interface FormData {
   nickname: string;
@@ -13,6 +13,7 @@ interface FormData {
     stars2: number;
     stars3: number;
   };
+  screenshot: File | null;
 }
 
 interface MultiStepFormProps {
@@ -28,10 +29,11 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
     nickname: "",
     cardLastDigits: "",
     type: "ALCO",
-    quantities: { stars1: 0, stars2: 0, stars3: 0 }
+    quantities: { stars1: 0, stars2: 0, stars3: 0 },
+    screenshot: null
   });
 
-  const totalSteps = 7;
+  const totalSteps = 8;
 
   const nextStep = () => {
     if (step === 1 && !formData.nickname.trim()) {
@@ -40,6 +42,10 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
     }
     if (step === 2 && formData.cardLastDigits.length !== 6) {
       setError("Введи 6 цифр карти!");
+      return;
+    }
+    if (step === 7 && !formData.screenshot) {
+      setError("Будь ласка, завантажте скріншот!");
       return;
     }
     setError(null);
@@ -316,6 +322,60 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             transition={{ duration: 0.3 }}
             className="text-center"
           >
+            <div className="mb-8">
+              <ImageIcon className="w-20 h-20 mx-auto text-amber-400" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 7 з {totalSteps}</h2>
+            <p className="text-xl text-zinc-300 mb-8">Завантаж скріншот здачі</p>
+            
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) updateFormData({ screenshot: file });
+                }}
+                className="hidden"
+                id="screenshot-upload"
+              />
+              <label
+                htmlFor="screenshot-upload"
+                className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+                  formData.screenshot 
+                    ? "border-green-500/50 bg-green-500/5" 
+                    : "border-zinc-700 bg-zinc-800/30 hover:border-amber-500/50 hover:bg-zinc-800/50"
+                }`}
+              >
+                {formData.screenshot ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Check className="w-8 h-8 text-green-500" />
+                    <span className="text-sm text-green-400 font-medium">{formData.screenshot.name}</span>
+                    <span className="text-[10px] text-zinc-500">Натисніть, щоб змінити</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-zinc-500 group-hover:text-amber-400 transition-colors">
+                    <Plus className="w-8 h-8" />
+                    <span className="text-sm font-medium">Вибрати файл</span>
+                    <span className="text-[10px]">PNG, JPG до 5MB</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </motion.div>
+        );
+
+      case 8:
+        return (
+          <motion.div
+            key="step8"
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="text-center"
+          >
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -324,7 +384,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             >
               <Check className="w-20 h-20 mx-auto text-green-400" />
             </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-4">Крок 7 з {totalSteps}</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">Крок 8 з {totalSteps}</h2>
             <p className="text-xl text-zinc-300 mb-8">Перевірка даних</p>
             <div className="bg-zinc-800/30 p-6 rounded-xl text-left space-y-3">
               <p className="text-lg"><span className="text-zinc-400">Нікнейм:</span> <span className="text-white font-semibold">{formData.nickname}</span></p>
@@ -342,6 +402,11 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
                   {(formData.quantities.stars1 * 50 + formData.quantities.stars2 * 100 + formData.quantities.stars3 * 150)}₴
                 </span>
               </p>
+              {formData.screenshot && (
+                <p className="text-lg text-emerald-400 flex items-center gap-2 mt-2">
+                  <Check className="w-4 h-4" /> Скріншот завантажено
+                </p>
+              )}
             </div>
           </motion.div>
         );

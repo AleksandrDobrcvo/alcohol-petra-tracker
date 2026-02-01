@@ -116,59 +116,59 @@ export async function POST(req: Request) {
     const base64 = buf.toString("base64");
     const screenshotPath = `data:${mimeType};base64,${base64}`;
 
-    // Create separate requests for each star level with qty > 0
-    const createdRequests = [];
-    const starLevels = [
-      { stars: 1, qty: parsed.quantities.stars1 },
-      { stars: 2, qty: parsed.quantities.stars2 },
-      { stars: 3, qty: parsed.quantities.stars3 },
-    ];
+    // Create one consolidated request
+    const { totalAmount } = await calcTotalForConsolidated(parsed.type, parsed.quantities);
 
-    for (const { stars, qty } of starLevels) {
-      if (qty <= 0) continue;
+    const created = await (prisma as any).entryRequest.create({
+      data: {
+        submitterId: ctx.userId,
+        date: new Date(),
+        type: parsed.type,
+        stars1Qty: parsed.quantities.stars1,
+        stars2Qty: parsed.quantities.stars2,
+        stars3Qty: parsed.quantities.stars3,
+        totalAmount: totalAmount,
+        nickname: parsed.nickname,
+        screenshotPath,
+        cardLastDigits: parsed.cardLastDigits ?? null,
+        status: "PENDING",
+      },
+      include: {
+        submitter: { select: { id: true, name: true } },
+        decidedBy: { select: { id: true, name: true } },
+      },
+    });
 
-      const { quantity, amount } = await calcQuantityAndAmount(parsed.type, stars, qty);
+    await writeAuditLog({
+      actorUserId: ctx.userId,
+      action: "REQUEST_CREATE",
+      targetType: "EntryRequest",
+      targetId: created.id,
+      after: {
+        type: (created as any).type,
+        stars1: (created as any).stars1Qty,
+        stars2: (created as any).stars2Qty,
+        stars3: (created as any).stars3Qty,
+        totalAmount: (created as any).totalAmount,
+        nickname: (created as any).nickname,
+        cardLastDigits: (created as any).cardLastDigits,
+      },
+    });
 
-      const created = await prisma.entryRequest.create({
-        data: {
-          submitterId: ctx.userId,
-          date: new Date(),
-          type: parsed.type,
-          stars,
-          quantity,
-          amount,
-          nickname: parsed.nickname,
-          screenshotPath,
-          cardLastDigits: parsed.cardLastDigits ?? null,
-          status: "PENDING",
-        },
-        include: {
-          submitter: { select: { id: true, name: true } },
-          decidedBy: { select: { id: true, name: true } },
-        },
-      });
-
-      await writeAuditLog({
-        actorUserId: ctx.userId,
-        action: "REQUEST_CREATE",
-        targetType: "EntryRequest",
-        targetId: created.id,
-        after: {
-          type: created.type,
-          stars: created.stars,
-          quantity: created.quantity,
-          amount: created.amount,
-          nickname: created.nickname,
-          screenshotPath: created.screenshotPath,
-          cardLastDigits: created.cardLastDigits,
-        },
-      });
-
-      createdRequests.push(created);
-    }
-
-    return jsonOk({ requests: createdRequests }, { status: 201 });
+    return jsonOk({ request: created }, { status: 201 });
   } catch (e) {
     return jsonError(e);
   }
+}
+
+async function calcTotalForConsolidated(type: "ALCO" | "PETRA", q: { stars1: number; stars2: number; stars3: number }) {
+  const prices = await prisma.pricing.findMany({ where: { type } });
+  const getPrice = (s: number) => prices.find(p => p.stars === s)?.price ?? 0;
+
+  const totalAmount = 
+    (q.stars1 * getPrice(1)) + 
+    (q.stars2 * getPrice(2)) + 
+    (q.stars3 * getPrice(3));
+
+  return { totalAmount };
 }

@@ -15,7 +15,8 @@ import {
   Filter,
   Eye,
   ExternalLink,
-  RefreshCcw
+  RefreshCcw,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -23,9 +24,10 @@ type RequestRow = {
   id: string;
   date: string;
   type: "ALCO" | "PETRA";
-  stars: number;
-  quantity: number;
-  amount: number;
+  stars1Qty: number;
+  stars2Qty: number;
+  stars3Qty: number;
+  totalAmount: number;
   nickname: string;
   screenshotPath: string;
   cardLastDigits: string | null;
@@ -82,6 +84,19 @@ export function AdminRequestsClient() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Невідома помилка");
+    }
+  }
+
+  async function deleteRequest(id: string) {
+    if (!confirm("Ви впевнені, що хочете видалити цю заявку? Це не видалить пов'язані записи виплат.")) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error?.message ?? "Не вдалося видалити");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Помилка");
     }
   }
 
@@ -196,9 +211,11 @@ export function AdminRequestsClient() {
                         <User className="w-3 h-3" />
                         <span className="truncate max-w-[100px]">{r.submitter.name}</span>
                       </div>
-                      <div className="flex items-center gap-1 font-bold text-white">
-                        <span>⭐ {r.stars} • {r.quantity}шт</span>
-                        <span className="text-emerald-400">{r.amount.toFixed(0)}₴</span>
+                      <div className="flex flex-wrap items-center gap-2 font-bold text-white">
+                        {r.stars1Qty > 0 && <span>⭐1: {r.stars1Qty}</span>}
+                        {r.stars2Qty > 0 && <span>⭐2: {r.stars2Qty}</span>}
+                        {r.stars3Qty > 0 && <span>⭐3: {r.stars3Qty}</span>}
+                        <span className="text-emerald-400 ml-2">{r.totalAmount.toFixed(0)}₴</span>
                       </div>
                       {r.cardLastDigits && (
                         <span className="text-amber-500 font-mono text-[10px]">💳 *{r.cardLastDigits}</span>
@@ -265,6 +282,13 @@ export function AdminRequestsClient() {
                             {r.decisionNote}
                           </div>
                         )}
+                        <button
+                          onClick={() => deleteRequest(r.id)}
+                          className="mt-2 p-2 rounded-lg bg-white/5 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all self-end"
+                          title="Видалити заявку зі списку"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
                   </div>

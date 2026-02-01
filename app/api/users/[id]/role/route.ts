@@ -7,25 +7,11 @@ import { jsonError, jsonOk } from "@/src/server/http";
 import { writeAuditLog } from "@/src/server/audit";
 
 const schema = z.object({
-  role: z.enum(["LEADER", "DEPUTY", "SENIOR", "ALCO_STAFF", "PETRA_STAFF", "MEMBER"]).optional(),
+  role: z.string().optional(),
   moderatesAlco: z.boolean().optional(),
   moderatesPetra: z.boolean().optional(),
   reason: z.string().optional(),
 });
-
-// Role hierarchy - higher number = more power
-const ROLE_POWER: Record<string, number> = {
-  LEADER: 100,
-  DEPUTY: 80,
-  SENIOR: 60,
-  ALCO_STAFF: 40,
-  PETRA_STAFF: 40,
-  MEMBER: 20,
-};
-
-function getRolePower(role: string): number {
-  return ROLE_POWER[role] ?? 0;
-}
 
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
@@ -35,53 +21,56 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     const id = ctx2.params.id;
     const body = schema.parse(await req.json());
 
+    const ROOT_ID = "1223246458975686750";
+    const isRoot = ctx.discordId === ROOT_ID;
+
+    // Fetch all role definitions to handle hierarchy dynamically
+    const roleDefs = await (prisma as any).roleDefinition.findMany();
+    const getRolePower = (roleName: string) => roleDefs.find((r: any) => r.name === roleName)?.power ?? 0;
+
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) return jsonOk({ user: null }, { status: 404 });
 
     const actor = await prisma.user.findUnique({ where: { id: ctx.userId } });
     if (!actor) throw new ApiError(403, "ACTOR_NOT_FOUND", "Користувача не знайдено");
 
-    const actorPower = getRolePower(actor.role);
+    const actorPower = isRoot ? 999 : getRolePower(actor.role);
     const targetPower = getRolePower(target.role);
     const newRolePower = body.role ? getRolePower(body.role) : targetPower;
 
-    // Rule 1: Cannot change your own role (except LEADER transferring leadership)
-    if (id === ctx.userId && actor.role !== "LEADER") {
+    // Validation: if role is provided, it must exist in RoleDefinition
+    if (body.role && !roleDefs.some((r: any) => r.name === body.role)) {
+      throw new ApiError(400, "INVALID_ROLE", "Вказана роль не існує в системі");
+    }
+
+    // Rule 1: Cannot change your own role (except Root)
+    if (id === ctx.userId && !isRoot) {
       throw new ApiError(403, "CANNOT_CHANGE_OWN_ROLE", "Ви не можете змінити свою роль");
     }
 
-    // Rule 2: Cannot modify someone with same or higher power (except LEADER)
-    if (targetPower >= actorPower && actor.role !== "LEADER") {
+    // Rule 2: Cannot modify someone with same or higher power (except Root)
+    if (targetPower >= actorPower && !isRoot) {
       throw new ApiError(403, "INSUFFICIENT_POWER", "Ви не можете змінювати користувача з такою ж або вищою роллю");
     }
 
-    // Rule 3: Cannot assign role higher than or equal to your own (except LEADER)
-    if (body.role && newRolePower >= actorPower && actor.role !== "LEADER") {
+    // Rule 3: Cannot assign role higher than or equal to your own (except Root)
+    if (body.role && newRolePower >= actorPower && !isRoot) {
       throw new ApiError(403, "ROLE_TOO_HIGH", "Ви не можете призначити роль вищу або рівну вашій");
     }
 
-    // Rule 4: Only LEADER can assign LEADER role (transfer leadership)
-    if (body.role === "LEADER" && actor.role !== "LEADER") {
-      throw new ApiError(403, "LEADER_ONLY", "Тільки Лідер може передати лідерство");
+    // Rule 4: Only someone with LEADER role (power >= 100) or Root can assign LEADER role
+    // We assume LEADER is the name of the top role. 
+    // More robust: check if newRolePower >= 100
+    if (body.role === "LEADER" && actorPower < 100 && !isRoot) {
+      throw new ApiError(403, "LEADER_ONLY", "Тільки Лідер може призначити цю роль");
     }
 
-    // Rule 5: If transferring leadership, demote current leader
+    // Rule 5: If assigning LEADER, and actor is LEADER, this is a transfer (optional logic)
+    // For now, keep it simple: allow Root or Leader to promote.
     let leadershipTransfer = false;
     if (body.role === "LEADER" && actor.role === "LEADER" && id !== ctx.userId) {
       leadershipTransfer = true;
-      // Demote current leader to DEPUTY
-      await prisma.user.update({
-        where: { id: ctx.userId },
-        data: { role: "DEPUTY" },
-      });
-      await writeAuditLog({
-        actorUserId: ctx.userId,
-        action: "USER_ROLE_CHANGE",
-        targetType: "User",
-        targetId: ctx.userId,
-        before: { role: "LEADER" },
-        after: { role: "DEPUTY", reason: "Передача лідерства" },
-      });
+      // Note: In dynamic system, we don't automatically demote unless specified
     }
 
     const updated = await prisma.user.update({

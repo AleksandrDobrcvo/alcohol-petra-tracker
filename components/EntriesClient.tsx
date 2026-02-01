@@ -41,15 +41,20 @@ type EntryRow = {
   paymentStatus: "PAID" | "UNPAID";
   paidAt: string | null;
   submitter: { id: string; name: string };
+  entryRequest?: {
+    screenshotPath: string;
+    nickname: string;
+  } | null;
 };
 
 type RequestRow = {
   id: string;
   date: string;
   type: "ALCO" | "PETRA";
-  stars: number;
-  quantity: number;
-  amount: number;
+  stars1Qty: number;
+  stars2Qty: number;
+  stars3Qty: number;
+  totalAmount: number;
   nickname: string;
   screenshotPath: string;
   cardLastDigits: string | null;
@@ -526,7 +531,7 @@ export function EntriesClient() {
                         )}
                         {[reqQuantities.stars1, reqQuantities.stars2, reqQuantities.stars3].filter(q => q > 0).length > 1 && (
                           <p className="text-[9px] text-zinc-600 mt-1 italic">
-                            ℹ️ Буде створено {[reqQuantities.stars1, reqQuantities.stars2, reqQuantities.stars3].filter(q => q > 0).length} окремі заявки (по кожній зірці)
+                            ℹ️ Буде створено ОДНУ консолідовану заявку
                           </p>
                         )}
                       </div>
@@ -588,16 +593,32 @@ export function EntriesClient() {
                           <span className="font-bold text-white text-sm leading-none">{r.nickname}</span>
                           <StatusBadge status={r.status} />
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-1">
-                          <span className="flex items-center gap-0.5">
-                            {Array.from({ length: r.stars }).map((_, i) => (
-                              <Star key={i} className="w-3 h-3 text-amber-500 fill-amber-500" />
-                            ))}
-                          </span>
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500 mt-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {r.stars1Qty > 0 && (
+                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300">{r.stars1Qty}шт</span>
+                              </span>
+                            )}
+                            {r.stars2Qty > 0 && (
+                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300">{r.stars2Qty}шт</span>
+                              </span>
+                            )}
+                            {r.stars3Qty > 0 && (
+                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300">{r.stars3Qty}шт</span>
+                              </span>
+                            )}
+                          </div>
                           <span>•</span>
-                          <span className="font-mono">{r.quantity} шт</span>
-                          <span>•</span>
-                          <span className="font-bold text-zinc-300">{Number(r.amount).toFixed(2)} ₴</span>
+                          <span className="font-bold text-zinc-300">{Number(r.totalAmount).toFixed(2)} ₴</span>
                           {r.cardLastDigits && (
                             <>
                               <span>•</span>
@@ -687,9 +708,20 @@ export function EntriesClient() {
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <div className="text-base font-black text-white leading-none">{Number(e.amount).toFixed(2)}</div>
-                    <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">Гривень</div>
+                  <div className="flex items-center gap-2">
+                    {e.entryRequest?.screenshotPath && (
+                      <button
+                        onClick={() => setScreenshotModal(e.entryRequest!.screenshotPath)}
+                        className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-white hover:bg-white/10 transition-all"
+                        title="Переглянути скріншот"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="text-right">
+                      <div className="text-base font-black text-white leading-none">{Number(e.amount).toFixed(2)}</div>
+                      <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">Гривень</div>
+                    </div>
                   </div>
                 </motion.div>
               ))
