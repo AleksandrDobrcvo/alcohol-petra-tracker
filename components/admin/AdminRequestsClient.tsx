@@ -264,6 +264,13 @@ export function AdminRequestsClient() {
                         >
                           <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
+                        <button
+                          onClick={() => deleteRequest(r.id)}
+                          className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-white/5 text-zinc-500 border border-white/10 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                          title="Видалити заявку"
+                        >
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
                       </>
                     ) : (
                       <div className="flex flex-col items-end">
