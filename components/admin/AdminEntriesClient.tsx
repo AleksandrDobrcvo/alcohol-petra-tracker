@@ -22,9 +22,34 @@ import {
   Wallet,
   ArrowRight,
   Star,
-  Info
+  Info,
+  Eye,
+  X,
+  Image as ImageIcon,
+  Shield,
+  Crown,
+  History,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+
+// Role badge helper component
+function RoleBadge({ role }: { role: string }) {
+  const config: Record<string, { label: string; color: string }> = {
+    LEADER: { label: '👑 Лідер', color: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black' },
+    DEPUTY: { label: '⭐ Заступник', color: 'bg-gradient-to-r from-amber-400 to-orange-400 text-black' },
+    SENIOR: { label: '🛡️ Старший', color: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+    ALCO_STAFF: { label: '🍺 Алко', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+    PETRA_STAFF: { label: '🌿 Петра', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+    MEMBER: { label: '✅ Учасник', color: 'bg-sky-500/20 text-sky-300 border border-sky-500/30' },
+  };
+  const c = config[role] || { label: role, color: 'bg-zinc-500/20 text-zinc-300' };
+  return (
+    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${c.color}`}>
+      {c.label}
+    </span>
+  );
+}
 
 type PricingItem = {
   type: "ALCO" | "PETRA";
@@ -40,8 +65,23 @@ type Entry = {
   quantity: number;
   amount: number;
   paymentStatus: "PAID" | "UNPAID";
-  submitter: { id: string; name: string };
-  createdBy: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string;
+  submitter: { id: string; name: string; role: string };
+  createdBy: { id: string; name: string; role: string };
+  updatedBy?: { id: string; name: string; role: string } | null;
+  entryRequest?: {
+    id: string;
+    nickname: string;
+    screenshotPath: string;
+    status: string;
+    decidedAt?: string;
+    decisionNote?: string;
+    cardLastDigits?: string;
+    createdAt: string;
+    decidedBy?: { id: string; name: string; role: string } | null;
+  } | null;
 };
 
 export function AdminEntriesClient() {
@@ -62,6 +102,7 @@ export function AdminEntriesClient() {
   } | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [detailEntry, setDetailEntry] = useState<Entry | null>(null);
   const [addForm, setAddForm] = useState<{
     userId: string;
     type: "ALCO" | "PETRA";
@@ -381,6 +422,13 @@ export function AdminEntriesClient() {
 
                         <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/5">
                           <button 
+                            onClick={() => setDetailEntry(e)}
+                            className="p-2 text-zinc-500 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"
+                            title="Деталі"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button 
                             onClick={() => {
                               if (editingId === e.id) {
                                 setEditingId(null);
@@ -612,6 +660,230 @@ export function AdminEntriesClient() {
                     >
                       Створити запис
                     </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Entry Detail Modal */}
+      <AnimatePresence>
+        {detailEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDetailEntry(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border border-white/10 bg-zinc-900 shadow-2xl"
+            >
+              {/* Header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/95 backdrop-blur-xl">
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${detailEntry.type === 'ALCO' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                    {detailEntry.type === 'ALCO' ? <Beer className="w-7 h-7" /> : <Sprout className="w-7 h-7" />}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-white">Деталі запису</h2>
+                    <p className="text-xs text-zinc-500 font-mono">ID: {detailEntry.id.slice(0, 8)}...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailEntry(null)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Main Info */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="rounded-2xl bg-white/5 p-4 border border-white/5">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Тип</p>
+                    <p className="text-lg font-black text-white">{detailEntry.type === 'ALCO' ? '🍺 Алко' : '🌿 Петра'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-4 border border-white/5">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Зірки</p>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: detailEntry.stars }).map((_, i) => (
+                        <Star key={i} className="w-5 h-5 text-amber-500 fill-amber-500" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-4 border border-white/5">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Кількість</p>
+                    <p className="text-lg font-black text-white">{detailEntry.quantity} шт</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-4 border border-white/5">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Сума</p>
+                    <p className="text-lg font-black text-amber-500">{detailEntry.amount.toFixed(2)} ₴</p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className={`rounded-2xl p-5 border ${detailEntry.paymentStatus === 'PAID' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {detailEntry.paymentStatus === 'PAID' ? (
+                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                      ) : (
+                        <Clock className="w-6 h-6 text-amber-500" />
+                      )}
+                      <div>
+                        <p className="font-black text-white text-lg">
+                          {detailEntry.paymentStatus === 'PAID' ? 'Виплачено' : 'Очікує виплати'}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {detailEntry.paymentStatus === 'PAID' && detailEntry.paidAt 
+                            ? `Виплачено: ${new Date(detailEntry.paidAt).toLocaleString()}` 
+                            : 'Статус оплати'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* People Involved */}
+                <div className="space-y-4">
+                  <h3 className="flex items-center gap-2 text-xs font-black text-zinc-500 uppercase tracking-widest">
+                    <User className="w-4 h-4" />
+                    Учасники
+                  </h3>
+                  
+                  <div className="grid gap-3">
+                    {/* Submitter */}
+                    <div className="flex items-center gap-4 rounded-xl bg-white/5 p-4 border border-white/5">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
+                        <User className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Отримувач</p>
+                        <p className="font-bold text-white">{detailEntry.submitter.name}</p>
+                      </div>
+                      <RoleBadge role={detailEntry.submitter.role} />
+                    </div>
+
+                    {/* Created By */}
+                    <div className="flex items-center gap-4 rounded-xl bg-white/5 p-4 border border-white/5">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <Plus className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Створив</p>
+                        <p className="font-bold text-white">{detailEntry.createdBy.name}</p>
+                        <p className="text-[10px] text-zinc-600">{new Date(detailEntry.createdAt).toLocaleString()}</p>
+                      </div>
+                      <RoleBadge role={detailEntry.createdBy.role} />
+                    </div>
+
+                    {/* Updated By */}
+                    {detailEntry.updatedBy && (
+                      <div className="flex items-center gap-4 rounded-xl bg-white/5 p-4 border border-white/5">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                          <Edit2 className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Останнє редагування</p>
+                          <p className="font-bold text-white">{detailEntry.updatedBy.name}</p>
+                          <p className="text-[10px] text-zinc-600">{new Date(detailEntry.updatedAt).toLocaleString()}</p>
+                        </div>
+                        <RoleBadge role={detailEntry.updatedBy.role} />
+                      </div>
+                    )}
+
+                    {/* Request Approver */}
+                    {detailEntry.entryRequest?.decidedBy && (
+                      <div className="flex items-center gap-4 rounded-xl bg-white/5 p-4 border border-white/5">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400">
+                          <CheckCircle className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Заявку схвалив</p>
+                          <p className="font-bold text-white">{detailEntry.entryRequest.decidedBy.name}</p>
+                          <p className="text-[10px] text-zinc-600">
+                            {detailEntry.entryRequest.decidedAt && new Date(detailEntry.entryRequest.decidedAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <RoleBadge role={detailEntry.entryRequest.decidedBy.role} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Request Info */}
+                {detailEntry.entryRequest && (
+                  <div className="space-y-4">
+                    <h3 className="flex items-center gap-2 text-xs font-black text-zinc-500 uppercase tracking-widest">
+                      <FileText className="w-4 h-4" />
+                      Заявка
+                    </h3>
+                    
+                    <div className="rounded-2xl bg-white/5 p-5 border border-white/5 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Нікнейм</p>
+                          <p className="font-bold text-white">{detailEntry.entryRequest.nickname}</p>
+                        </div>
+                        {detailEntry.entryRequest.cardLastDigits && (
+                          <div>
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Карта</p>
+                            <p className="font-bold text-white font-mono">💳 *{detailEntry.entryRequest.cardLastDigits}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Screenshot */}
+                      {detailEntry.entryRequest.screenshotPath && (
+                        <div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Скріншот</p>
+                          <img 
+                            src={detailEntry.entryRequest.screenshotPath} 
+                            alt="Скріншот" 
+                            className="max-h-60 rounded-xl border border-white/10 object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dates */}
+                <div className="space-y-4">
+                  <h3 className="flex items-center gap-2 text-xs font-black text-zinc-500 uppercase tracking-widest">
+                    <History className="w-4 h-4" />
+                    Історія
+                  </h3>
+                  
+                  <div className="rounded-2xl bg-white/5 p-5 border border-white/5">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-500">Дата запису</span>
+                        <span className="font-bold text-white">{new Date(detailEntry.date).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-500">Створено</span>
+                        <span className="font-bold text-white">{new Date(detailEntry.createdAt).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-500">Оновлено</span>
+                        <span className="font-bold text-white">{new Date(detailEntry.updatedAt).toLocaleString()}</span>
+                      </div>
+                      {detailEntry.entryRequest && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-zinc-500">Заявка створена</span>
+                          <span className="font-bold text-white">{new Date(detailEntry.entryRequest.createdAt).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

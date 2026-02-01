@@ -46,9 +46,22 @@ export async function GET(req: Request) {
       where,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
-        submitter: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-        updatedBy: { select: { id: true, name: true } },
+        submitter: { select: { id: true, name: true, role: true } },
+        createdBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
+        entryRequest: {
+          select: {
+            id: true,
+            nickname: true,
+            screenshotPath: true,
+            status: true,
+            decidedAt: true,
+            decisionNote: true,
+            cardLastDigits: true,
+            createdAt: true,
+            decidedBy: { select: { id: true, name: true, role: true } },
+          }
+        }
       },
     });
 
