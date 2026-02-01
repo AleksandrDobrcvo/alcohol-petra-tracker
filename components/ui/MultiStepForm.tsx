@@ -25,6 +25,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [prices, setPrices] = useState<any[]>([]);
   const [formData, setFormData] = useState<FormData>({
     nickname: "",
     cardLastDigits: "",
@@ -32,6 +33,20 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
     quantities: { stars1: 0, stars2: 0, stars3: 0 },
     screenshot: null
   });
+
+  useEffect(() => {
+    fetch("/api/admin/pricing")
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) setPrices(json.data.prices);
+      })
+      .catch(console.error);
+  }, []);
+
+  const getPrice = (stars: number) => {
+    const p = prices.find(x => x.type === formData.type && x.stars === stars);
+    return p?.price ?? (stars * 50); // Fallback to 50/100/150 if not loaded
+  };
 
   const totalSteps = 8;
 
@@ -298,13 +313,13 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
             <p className="text-xl text-zinc-300 mb-8">Розрахунок винагороди</p>
             <div className="bg-zinc-800/30 p-6 rounded-xl space-y-4">
               <div className="text-lg text-zinc-300">
-                <p>⭐ 1 зірка: {formData.quantities.stars1} шт × 50₴ = {formData.quantities.stars1 * 50}₴</p>
-                <p>⭐⭐ 2 зірки: {formData.quantities.stars2} шт × 100₴ = {formData.quantities.stars2 * 100}₴</p>
-                <p>⭐⭐⭐ 3 зірки: {formData.quantities.stars3} шт × 150₴ = {formData.quantities.stars3 * 150}₴</p>
+                <p>⭐ 1 зірка: {formData.quantities.stars1} шт × {getPrice(1)}₴ = {formData.quantities.stars1 * getPrice(1)}₴</p>
+                <p>⭐⭐ 2 зірки: {formData.quantities.stars2} шт × {getPrice(2)}₴ = {formData.quantities.stars2 * getPrice(2)}₴</p>
+                <p>⭐⭐⭐ 3 зірки: {formData.quantities.stars3} шт × {getPrice(3)}₴ = {formData.quantities.stars3 * getPrice(3)}₴</p>
               </div>
               <div className="border-t border-zinc-600 pt-4">
                 <p className="text-2xl font-bold text-green-400">
-                  Загалом: {(formData.quantities.stars1 * 50 + formData.quantities.stars2 * 100 + formData.quantities.stars3 * 150)}₴
+                  Загалом: {(formData.quantities.stars1 * getPrice(1) + formData.quantities.stars2 * getPrice(2) + formData.quantities.stars3 * getPrice(3))}₴
                 </p>
               </div>
             </div>
@@ -399,7 +414,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
               </p>
               <p className="text-lg"><span className="text-zinc-400">Очікувана винагорода:</span> 
                 <span className="text-green-400 font-bold text-xl">
-                  {(formData.quantities.stars1 * 50 + formData.quantities.stars2 * 100 + formData.quantities.stars3 * 150)}₴
+                  {(formData.quantities.stars1 * getPrice(1) + formData.quantities.stars2 * getPrice(2) + formData.quantities.stars3 * getPrice(3))}₴
                 </span>
               </p>
               {formData.screenshot && (

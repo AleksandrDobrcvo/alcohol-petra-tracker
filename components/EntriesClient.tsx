@@ -189,7 +189,7 @@ export function EntriesClient() {
     [1, 2, 3].forEach((stars) => {
       const p = prices.find(x => x.type === reqType && x.stars === stars);
       const qty = reqQuantities[`stars${stars}` as keyof typeof reqQuantities];
-      total += (p?.price ?? stars * 50) * qty;
+      total += (p?.price ?? (stars * 50)) * qty;
     });
     return total;
   }, [prices, reqType, reqQuantities]);

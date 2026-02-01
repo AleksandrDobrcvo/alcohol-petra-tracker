@@ -164,7 +164,7 @@ export async function POST(req: Request) {
 
 async function calcTotalForConsolidated(type: "ALCO" | "PETRA", q: { stars1: number; stars2: number; stars3: number }) {
   const prices = await prisma.pricing.findMany({ where: { type } });
-  const getPrice = (s: number) => prices.find(p => p.stars === s)?.price ?? 0;
+  const getPrice = (s: number) => prices.find(p => p.stars === s)?.price ?? (s * 50);
 
   const totalAmount = 
     (q.stars1 * getPrice(1)) + 
