@@ -6,6 +6,9 @@ export function jsonOk<T>(data: T, init?: ResponseInit) {
 }
 
 export function jsonError(error: unknown) {
+  // Log actual error for debugging
+  console.error("[API Error]", error);
+
   if (error instanceof ApiError) {
     return NextResponse.json(
       { ok: false, error: { code: error.code, message: error.message } },
@@ -13,10 +16,11 @@ export function jsonError(error: unknown) {
     );
   }
 
-  // Log actual error for debugging
-  console.error("[API Error]", error);
-
-  const message = error instanceof Error ? error.message : "Internal error";
+  // Return detailed error message for debugging
+  const message = error instanceof Error ? error.message : "Unknown internal error";
+  const stack = error instanceof Error ? error.stack : undefined;
+  console.error("[API Stack]", stack);
+  
   return NextResponse.json(
     { ok: false, error: { code: "INTERNAL_ERROR", message } },
     { status: 500 },
