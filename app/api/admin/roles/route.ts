@@ -20,7 +20,7 @@ export async function GET() {
     // Only leaders and deputies can manage roles
     assertRoleOrThrow(ctx, ["LEADER", "DEPUTY"]);
 
-    const roles = await prisma.roleDefinition.findMany({
+    const roles = await (prisma as any).roleDefinition.findMany({
       orderBy: { power: "desc" },
     });
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     const body = roleSchema.parse(await req.json());
 
-    const role = await prisma.roleDefinition.upsert({
+    const role = await (prisma as any).roleDefinition.upsert({
       where: { name: body.name },
       update: body,
       create: body,
@@ -63,7 +63,7 @@ export async function DELETE(req: Request) {
       throw new Error("Cannot delete core roles");
     }
 
-    await prisma.roleDefinition.delete({
+    await (prisma as any).roleDefinition.delete({
       where: { name },
     });
 

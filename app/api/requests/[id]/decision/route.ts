@@ -68,7 +68,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
         // Calculate amount for this specific entry
         const { amount } = await calcQuantityAndAmount(existing.type as "ALCO" | "PETRA", stars, qty);
 
-        const entry = await tx.entry.create({
+        const entry = await (tx.entry.create as any)({
           data: {
             date: existing.date,
             submitterId: existing.submitterId,

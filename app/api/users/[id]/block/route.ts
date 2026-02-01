@@ -56,7 +56,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       throw new ApiError(400, "REASON_REQUIRED", "Для блокування необхідно вказати причину");
     }
 
-    const updated = await prisma.user.update({
+    const updated = await (prisma.user.update as any)({
       where: { id },
       data: { 
         isBlocked: body.isBlocked,

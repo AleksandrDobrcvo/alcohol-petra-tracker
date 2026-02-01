@@ -8,7 +8,7 @@ export async function GET() {
     const ctx = await requireSession();
     assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
 
-    const users = await prisma.user.findMany({
+    const users = await (prisma.user.findMany as any)({
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,
