@@ -27,11 +27,9 @@ export const authOptions: NextAuthOptions = {
       const discordId =
         (profile as { id?: string } | null)?.id ?? (account?.providerAccountId ?? null);
 
-      // Refresh user data from DB on sign-in or when triggered
-      if (discordId || trigger === "update") {
-        const lookupId = discordId || (token.discordId as string);
-        if (!lookupId) return token;
-        
+      // ALWAYS refresh user data from DB (not just on sign-in)
+      const lookupId = discordId || (token.discordId as string);
+      if (lookupId) {
         const name =
           (profile as { username?: string; global_name?: string } | null)?.global_name ??
           (profile as { username?: string } | null)?.username ??
@@ -45,15 +43,7 @@ export const authOptions: NextAuthOptions = {
 
         const existing = await prisma.user.findUnique({ where: { discordId: lookupId } });
         
-        // If existing user's ID matches the owner ID, but role is not LEADER, fix it
-        if (existing && isOwner && existing.role !== "LEADER") {
-          await prisma.user.update({
-            where: { id: existing.id },
-            data: { role: "LEADER", isApproved: true },
-          });
-          existing.role = "LEADER";
-          existing.isApproved = true;
-        }
+        // Note: Removed auto-upgrade to LEADER - roles are now managed manually via admin panel
 
         const shouldBootstrapOwner =
           process.env.NODE_ENV === "development" &&
@@ -73,6 +63,16 @@ export const authOptions: NextAuthOptions = {
             },
           }));
 
+        // Update lastSeenAt (throttled - only if more than 1 minute since last update)
+        const now = new Date();
+        const lastSeen = (user as any).lastSeenAt as Date | null;
+        if (!lastSeen || now.getTime() - lastSeen.getTime() > 60000) {
+          await (prisma.user as any).update({
+            where: { id: user.id },
+            data: { lastSeenAt: now }
+          }).catch(() => {}); // Silently fail if DB is slow
+        }
+
         if (user.isBlocked) {
           // Soft fail: session will be rejected via signIn callback
           token.isBlocked = true;
@@ -87,6 +87,7 @@ export const authOptions: NextAuthOptions = {
         token.isApproved = user.isApproved;
         token.moderatesAlco = (user as any).moderatesAlco ?? false;
         token.moderatesPetra = (user as any).moderatesPetra ?? false;
+        token.additionalRoles = (user as any).additionalRoles ?? [];
         token.isFrozen = (user as any).isFrozen ?? false;
         token.frozenReason = (user as any).frozenReason ?? null;
         token.name = user.name;
@@ -106,6 +107,7 @@ export const authOptions: NextAuthOptions = {
         session.user.isApproved = Boolean(token.isApproved);
         session.user.moderatesAlco = Boolean((token as any).moderatesAlco);
         session.user.moderatesPetra = Boolean((token as any).moderatesPetra);
+        session.user.additionalRoles = ((token as any).additionalRoles as string[]) ?? [];
         session.user.isFrozen = Boolean((token as any).isFrozen);
         session.user.frozenReason = ((token as any).frozenReason as string | null | undefined) ?? null;
         session.user.name = (token.name as string) ?? session.user.name;

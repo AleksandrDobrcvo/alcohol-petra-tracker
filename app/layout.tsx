@@ -9,10 +9,23 @@ import { BanGuard } from "@/components/BanGuard";
 
 export const metadata: Metadata = {
   title: {
-    default: "Sobranie Clan Tracker - Учет Алко и Петры",
-    template: "%s | Sobranie Clan Tracker"
+    default: "SOBRANIE | Облік Ресурсів Клану",
+    template: "%s | SOBRANIE"
   },
-  description: "Алко / Петра — учёт сдач и выплат клана Sobranie.",
+  description: "Офіційна система обліку здач та виплат клану SOBRANIE. Алко & Петра — все під контролем.",
+  keywords: ["SOBRANIE", "клан", "облік", "алко", "петра", "виплати"],
+  openGraph: {
+    title: "SOBRANIE | Облік Ресурсів Клану",
+    description: "Офіційна система обліку здач та виплат клану SOBRANIE. Алко & Петра — все під контролем.",
+    siteName: "SOBRANIE Clan",
+    locale: "uk_UA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SOBRANIE | Облік Ресурсів Клану",
+    description: "Офіційна система обліку здач та виплат клану SOBRANIE.",
+  },
 };
 
 export default function RootLayout({

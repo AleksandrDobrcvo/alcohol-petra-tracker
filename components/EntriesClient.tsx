@@ -346,7 +346,7 @@ export function EntriesClient() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="group relative rounded-[2rem] border border-white/10 bg-gradient-to-br from-amber-500/10 to-transparent p-6 backdrop-blur-xl hover:border-amber-500/30 transition-all duration-500"
+          className="group relative rounded-[2rem] border border-white/10 bg-[#0a0d10]/60 p-6 backdrop-blur-xl hover:border-amber-500/30 transition-all duration-500"
         >
           <div className="flex items-center gap-4 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
@@ -368,7 +368,7 @@ export function EntriesClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="group relative rounded-[2rem] border border-white/10 bg-gradient-to-br from-emerald-500/10 to-transparent p-6 backdrop-blur-xl hover:border-emerald-500/30 transition-all duration-500"
+          className="group relative rounded-[2rem] border border-white/10 bg-[#0a0d10]/60 p-6 backdrop-blur-xl hover:border-emerald-500/30 transition-all duration-500"
         >
           <div className="flex items-center gap-4 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
@@ -390,7 +390,7 @@ export function EntriesClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="group relative rounded-[2rem] border border-white/10 bg-gradient-to-br from-sky-500/10 to-transparent p-6 backdrop-blur-xl hover:border-sky-500/30 transition-all duration-500"
+          className="group relative rounded-[2rem] border border-white/10 bg-[#0a0d10]/60 p-6 backdrop-blur-xl hover:border-sky-500/30 transition-all duration-500"
         >
           <div className="flex items-center gap-4 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-500 border border-sky-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
@@ -413,7 +413,7 @@ export function EntriesClient() {
       {session && (
         <motion.div 
           layout
-          className="overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/[0.02] backdrop-blur-3xl shadow-2xl"
+          className="overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0d10]/80 backdrop-blur-xl shadow-2xl"
         >
           <div 
             className="flex items-center justify-between p-6 cursor-pointer group"
@@ -441,7 +441,7 @@ export function EntriesClient() {
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
               >
-                <div className="p-8 pt-0 border-t border-white/5 bg-gradient-to-b from-white/[0.01] to-transparent">
+                <div className="p-8 pt-0 border-t border-white/5">
                   {/* Підказка */}
                   <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-sky-500/5 border border-sky-500/10">
                     <div className="flex items-start gap-2 sm:gap-3">
@@ -465,7 +465,7 @@ export function EntriesClient() {
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                         <input
-                          className="w-full rounded-[1.25rem] border border-white/10 bg-black/20 py-4 pl-12 pr-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                          className="w-full rounded-[1.25rem] border border-white/10 bg-white/5 py-4 pl-12 pr-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
                           placeholder="Ваш ігровий нік..."
                           value={reqNickname}
                           onChange={(e) => setReqNickname(e.target.value)}
@@ -477,7 +477,7 @@ export function EntriesClient() {
                     {/* Type */}
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Тип ресурсу</label>
-                      <div className="flex p-1 rounded-[1.25rem] bg-black/20 border border-white/10 h-[60px]">
+                      <div className="flex p-1 rounded-[1.25rem] bg-white/5 border border-white/10 h-[60px]">
                         <button
                           onClick={() => setReqType("ALCO")}
                           className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all ${reqType === 'ALCO' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-zinc-500 hover:text-white'}`}
@@ -506,7 +506,7 @@ export function EntriesClient() {
                             <div key={stars} className={`relative rounded-xl sm:rounded-[1.25rem] border transition-all p-2 sm:p-4 ${
                               qty > 0 
                                 ? 'bg-amber-500/10 border-amber-500/30' 
-                                : 'bg-black/20 border-white/10'
+                                : 'bg-white/5 border-white/10'
                             }`}>
                               <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                                 {Array.from({ length: stars }).map((_, i) => (
@@ -545,7 +545,7 @@ export function EntriesClient() {
                         type="text"
                         maxLength={6}
                         placeholder="123456"
-                        className="w-full rounded-[1.25rem] border border-white/10 bg-black/20 py-4 px-6 text-white text-center font-black focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all h-[60px]"
+                        className="w-full rounded-[1.25rem] border border-white/10 bg-white/5 py-4 px-6 text-white text-center font-black focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all h-[60px]"
                         value={reqCardDigits}
                         onChange={(e) => setReqCardDigits(e.target.value.replace(/\D/g, ''))}
                       />
@@ -554,7 +554,7 @@ export function EntriesClient() {
                     {/* Screenshot */}
                     <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
                       <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Доказ (Скріншот)</label>
-                      <div className={`relative group/file flex items-center justify-center rounded-xl sm:rounded-[1.5rem] border-2 border-dashed transition-all p-4 sm:p-8 ${reqScreenshot ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'}`}>
+                      <div className={`relative group/file flex items-center justify-center rounded-xl sm:rounded-[1.5rem] border-2 border-dashed transition-all p-4 sm:p-8 ${reqScreenshot ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'}`}>
                         <input
                           type="file"
                           accept="image/*"
@@ -573,7 +573,7 @@ export function EntriesClient() {
                     </div>
 
                     {/* Info / Estimate */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row items-stretch gap-4 sm:gap-6 rounded-xl sm:rounded-[1.5rem] bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 p-4 sm:p-6">
+                    <div className="col-span-1 md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row items-stretch gap-4 sm:gap-6 rounded-xl sm:rounded-[1.5rem] bg-[#0a0d10]/80 border border-amber-500/20 p-4 sm:p-6">
                       <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 shrink-0">
                         <Info className="w-8 h-8" />
                       </div>

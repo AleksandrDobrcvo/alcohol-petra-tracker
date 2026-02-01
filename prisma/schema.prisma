@@ -26,6 +26,7 @@ model User {
   discordId         String            @unique
   name              String
   role              String            @default("MEMBER")
+  additionalRoles   String[]          @default([])
   cardNumber        String?
   isBlocked         Boolean           @default(false)
   banReason         String?
@@ -35,6 +36,7 @@ model User {
   moderatesPetra    Boolean           @default(false)
   isFrozen          Boolean           @default(false)
   frozenReason      String?
+  lastSeenAt        DateTime?         // Track online status
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   auditLogs         AuditLog[]        @relation("AuditActor")

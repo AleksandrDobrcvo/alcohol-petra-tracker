@@ -20,12 +20,14 @@ import {
 import { Button } from "@/components/ui/Button";
 import { MaintenanceToggleClient } from "@/components/admin/MaintenanceToggleClient";
 import { useNotifications } from "@/components/ui/Toast";
+import { MultiRoleBadges } from "@/components/ui/RoleBadge";
 
 type UserRow = {
   id: string;
   discordId: string;
   name: string;
   role: string;
+  additionalRoles?: string[];
   isBlocked: boolean;
   banReason?: string | null;
   unbanDate?: string | null;
@@ -33,6 +35,7 @@ type UserRow = {
   cardNumber: string | null;
   moderatesAlco: boolean;
   moderatesPetra: boolean;
+  lastSeenAt?: string | null;
 };
 
 type RoleDef = {
@@ -63,6 +66,27 @@ export function AdminUsersClient() {
   const myDiscordId = (session?.user as any)?.discordId;
   const isRoot = myDiscordId === ROOT_ID;
 
+  // Check if user is online (active in last 5 minutes)
+  function isOnline(user: UserRow): boolean {
+    if (!user.lastSeenAt) return false;
+    const lastSeen = new Date(user.lastSeenAt);
+    return Date.now() - lastSeen.getTime() < 5 * 60 * 1000;
+  }
+
+  // Format last seen time
+  function formatLastSeen(user: UserRow): string {
+    if (!user.lastSeenAt) return "Ніколи";
+    const lastSeen = new Date(user.lastSeenAt);
+    const diff = Date.now() - lastSeen.getTime();
+    
+    if (diff < 60 * 1000) return "Щойно";
+    if (diff < 5 * 60 * 1000) return "Онлайн";
+    if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)} хв тому`;
+    if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)} год тому`;
+    if (diff < 7 * 24 * 60 * 60 * 1000) return `${Math.floor(diff / 86400000)} дн тому`;
+    return lastSeen.toLocaleDateString("uk-UA");
+  }
+
   // Fallback role powers if not loaded from DB yet
   const ROLE_POWER: Record<string, number> = roles.length > 0 
     ? Object.fromEntries(roles.map(r => [r.name, r.power]))
@@ -76,12 +100,18 @@ export function AdminUsersClient() {
       };
 
   const myRole = session?.user?.role || "MEMBER";
+  const myUserId = session?.user?.id;
   const myPower = isRoot ? 999 : (ROLE_POWER[myRole] || 0);
 
   // Check if current user can modify target user
   function canModifyUser(target: UserRow): boolean {
+    // Cannot modify yourself
+    if (target.id === myUserId && !isRoot) return false;
+    // Root can modify anyone
     if (isRoot) return true;
-    if (myRole === "LEADER" && target.discordId !== ROOT_ID) return true;
+    // Cannot modify ROOT user
+    if (target.discordId === ROOT_ID) return false;
+    // Cannot modify users with same or higher power
     const targetPower = ROLE_POWER[target.role] || 0;
     return targetPower < myPower;
   }
@@ -90,7 +120,17 @@ export function AdminUsersClient() {
   function canAssignRole(roleName: string): boolean {
     if (isRoot) return true;
     const rolePower = ROLE_POWER[roleName] || 0;
+    // Can only assign roles with LOWER power than yours
     return rolePower < myPower;
+  }
+
+  // Get reason why user cannot be modified
+  function getModifyBlockReason(target: UserRow): string {
+    if (target.id === myUserId) return "Ви не можете змінювати себе";
+    if (target.discordId === ROOT_ID) return "Цей користувач захищений";
+    const targetPower = ROLE_POWER[target.role] || 0;
+    if (targetPower >= myPower) return "Роль користувача вища або рівна вашій";
+    return "";
   }
 
   async function load() {
@@ -274,8 +314,24 @@ export function AdminUsersClient() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${roleDef?.color || 'from-zinc-800 to-zinc-900'} border border-white/10 text-xl shadow-inner`}>
-                        {roleDef?.emoji || '👤'}
+                      <div className="relative">
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${roleDef?.color || 'from-zinc-800 to-zinc-900'} border border-white/10 text-xl shadow-inner`}>
+                          {roleDef?.emoji || '👤'}
+                        </div>
+                        {/* Online indicator */}
+                        {isOnline(u) && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-green-500 border-2 border-zinc-900 shadow-lg shadow-green-500/50"
+                          >
+                            <motion.div
+                              className="absolute inset-0 rounded-full bg-green-400"
+                              animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            />
+                          </motion.div>
+                        )}
                       </div>
                       <div>
                         <h3 className="font-bold text-white leading-none mb-1">{u.name}</h3>
@@ -287,7 +343,38 @@ export function AdminUsersClient() {
                     </div>
                   </div>
 
+                  {/* Multi-role badges */}
+                  <div className="mb-4">
+                    <MultiRoleBadges
+                      primaryRole={u.role}
+                      additionalRoles={u.additionalRoles || []}
+                      roleDefs={roles}
+                      size="sm"
+                      maxVisible={3}
+                    />
+                  </div>
+
                 <div className="space-y-3 mb-6">
+                  {/* Online/Last Seen Status */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-500">Статус:</span>
+                    <span className={`flex items-center gap-1.5 font-medium ${isOnline(u) ? 'text-green-400' : 'text-zinc-500'}`}>
+                      {isOnline(u) ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                          </span>
+                          Онлайн
+                        </>
+                      ) : (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-zinc-600"></span>
+                          {formatLastSeen(u)}
+                        </>
+                      )}
+                    </span>
+                  </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-zinc-500">Статус доступу:</span>
                     <span className={`font-medium ${u.isApproved ? 'text-green-400' : 'text-amber-400'}`}>
@@ -329,7 +416,7 @@ export function AdminUsersClient() {
                         ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30' 
                         : 'bg-zinc-800/50 text-zinc-600 border border-zinc-700/50 cursor-not-allowed'
                     }`}
-                    title={!canModifyUser(u) ? 'Неможливо змінити (роль вища або рівна вашій)' : 'Керування роллю'}
+                    title={getModifyBlockReason(u) || 'Керування роллю'}
                   >
                     <Shield className="w-3.5 h-3.5" />
                     Роль
@@ -529,7 +616,62 @@ export function AdminUsersClient() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                {/* Additional Roles Section */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1 flex items-center gap-2">
+                  <span>Додаткові ролі</span>
+                  <span className="text-amber-500">✨</span>
+                </p>
+                <p className="text-[9px] text-zinc-600 px-1 -mt-1">Ці ролі будуть показані поряд з основною</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {roles.filter(r => r.name !== selectedUser.role && canAssignRole(r.name)).map((r) => {
+                    const isActive = selectedUser.additionalRoles?.includes(r.name);
+                    return (
+                      <motion.button
+                        key={r.name}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          const currentAdditional = selectedUser.additionalRoles || [];
+                          const newAdditional = isActive
+                            ? currentAdditional.filter(n => n !== r.name)
+                            : [...currentAdditional, r.name];
+                          updatePermissions(selectedUser.id, { additionalRoles: newAdditional } as any);
+                        }}
+                        className={`relative overflow-hidden flex items-center gap-2 rounded-xl border p-3 transition-all ${
+                          isActive 
+                            ? `border-white/30 bg-gradient-to-br ${r.color} shadow-lg` 
+                            : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        {/* Shimmer for active */}
+                        {isActive && (
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            animate={{ x: ["-100%", "100%"] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          />
+                        )}
+                        <span className="text-lg relative">{r.emoji}</span>
+                        <span className={`text-xs font-bold relative ${isActive ? 'text-white' : r.textColor}`}>
+                          {r.label}
+                        </span>
+                        {isActive && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="ml-auto text-white text-xs"
+                          >
+                            ✓
+                          </motion.span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Додаткові права (Модерація)</p>
                   <div className="grid grid-cols-2 gap-3">
                     <button

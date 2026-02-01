@@ -1,15 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Menu, X, Bell, RefreshCw } from "lucide-react";
+import { Menu, X, Bell, RefreshCw, Users, Trophy } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MultiRoleBadges, RoleDef } from "@/components/ui/RoleBadge";
+
+type TopContributor = {
+  id: string;
+  name: string;
+  role: string;
+  totalAmount: number;
+  totalQuantity: number;
+};
 
 export function Header() {
   const { data: session, status, update } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [roles, setRoles] = useState<RoleDef[]>([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingUsers, setPendingUsers] = useState(0);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [topContributors, setTopContributors] = useState<TopContributor[]>([]);
 
   const isAdmin = session?.user?.role === "LEADER" || session?.user?.role === "DEPUTY" || session?.user?.role === "SENIOR";
   const myDiscordId = (session?.user as any)?.discordId;
@@ -21,24 +36,63 @@ export function Header() {
     session?.user?.moderatesAlco || 
     session?.user?.moderatesPetra;
 
-  // Role badge config
-  const getRoleBadge = () => {
-    if (!session?.user) return { label: '', color: '' };
-    if (isRoot) return { label: '💻 DEV', color: 'bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white shadow-lg shadow-fuchsia-500/20' };
+  // Fetch roles and counts on mount
+  useEffect(() => {
+    fetch("/api/admin/roles", { cache: "no-store" })
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) setRoles(json.data.roles);
+      })
+      .catch(() => {});
     
-    const role = session.user.role;
-    const isApproved = session.user.isApproved;
-    
-    if (role === 'LEADER') return { label: '👑 Лідер', color: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/20' };
-    if (role === 'DEPUTY') return { label: '⭐ Заступник', color: 'bg-gradient-to-r from-amber-400 to-orange-400 text-black shadow-lg shadow-orange-500/20' };
-    if (role === 'SENIOR') return { label: '🛡️ Старший', color: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' };
-    if (role === 'ALCO_STAFF') return { label: '🍺 Алко', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' };
-    if (role === 'PETRA_STAFF') return { label: '🌿 Петра', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' };
-    if (!isApproved) return { label: '⏳ Очікування', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse' };
-    return { label: '✅ Учасник', color: 'bg-sky-500/20 text-sky-300 border border-sky-500/30' };
-  };
+    // Fetch stats (online count + top contributors)
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/stats", { cache: "no-store" });
+        const json = await res.json();
+        if (json.ok) {
+          setOnlineCount(json.data.onlineCount || 0);
+          setTopContributors(json.data.topContributors || []);
+        }
+      } catch (e) {}
+    };
+    fetchStats();
+    const statsInterval = setInterval(fetchStats, 60000); // Refresh every minute
+    return () => clearInterval(statsInterval);
+  }, []);
 
-  const badge = getRoleBadge();
+  // Fetch pending counts
+  useEffect(() => {
+    if (!session) return;
+    
+    const fetchCounts = async () => {
+      try {
+        // Fetch pending requests
+        const reqRes = await fetch("/api/requests?status=PENDING", { cache: "no-store" });
+        const reqJson = await reqRes.json();
+        if (reqJson.ok) {
+          setPendingRequests(reqJson.data.requests?.length || 0);
+        }
+
+        // Fetch pending user approvals (only for admins)
+        if (isAdmin || isRoot) {
+          const userRes = await fetch("/api/users", { cache: "no-store" });
+          const userJson = await userRes.json();
+          if (userJson.ok) {
+            const pending = userJson.data.users?.filter((u: any) => !u.isApproved).length || 0;
+            setPendingUsers(pending);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch counts", e);
+      }
+    };
+
+    fetchCounts();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, [session, isAdmin, isRoot]);
 
   const handleRefreshSession = async () => {
     setRefreshing(true);
@@ -54,6 +108,20 @@ export function Header() {
             <span className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-xl sm:text-2xl shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">🏰</span>
             <span className="hidden sm:block">SOBRANIE</span>
           </Link>
+          
+          {/* Online Counter */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="hidden sm:flex items-center gap-2 rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1.5"
+          >
+            <div className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </div>
+            <span className="text-xs font-bold text-green-400">{onlineCount}</span>
+            <Users className="w-3 h-3 text-green-500" />
+          </motion.div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3 text-sm">
@@ -63,13 +131,37 @@ export function Header() {
               </Link>
             )}
             {isAdmin || isRoot ? (
-              <Link href="/admin/users" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15 transition-all">
+              <Link href="/admin/users" className="relative rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15 transition-all">
                 🛠️ Адмінка
+                <AnimatePresence>
+                  {pendingUsers > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1 text-[10px] font-black text-white shadow-lg shadow-amber-500/30"
+                    >
+                      {pendingUsers > 9 ? "9+" : pendingUsers}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Link>
             ) : null}
             {canSeeRequests && (
-              <Link href="/admin/requests" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
+              <Link href="/admin/requests" className="relative rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
                 ✅ Заявки
+                <AnimatePresence>
+                  {pendingRequests > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-green-500 px-1 text-[10px] font-black text-white shadow-lg shadow-emerald-500/30"
+                    >
+                      {pendingRequests > 9 ? "9+" : pendingRequests}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Link>
             )}
             {session && (
@@ -124,9 +216,16 @@ export function Header() {
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
                 <span className="text-zinc-300 text-sm">{session.user.name}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${badge.color}`}>
-                  {badge.label}
-                </span>
+                <MultiRoleBadges
+                  primaryRole={isRoot ? "DEV" : session.user.role}
+                  additionalRoles={session.user.additionalRoles || []}
+                  roleDefs={[
+                    { name: "DEV", label: "DEV", emoji: "💻", color: "from-fuchsia-600 to-indigo-600", textColor: "text-fuchsia-400", power: 999 },
+                    ...roles
+                  ]}
+                  size="sm"
+                  maxVisible={2}
+                />
                 <button onClick={() => signOut()} className="rounded-xl bg-red-500/20 px-3 py-2 text-red-300 hover:bg-red-500/30 text-xs">
                   🚪
                 </button>
@@ -159,13 +258,23 @@ export function Header() {
                   📊 Статистика
                 </Link>
                 {canSeeRequests && (
-                  <Link href="/admin/requests" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-emerald-500/10 px-4 py-3 text-emerald-300">
-                    ✅ Перевірка заявок
+                  <Link href="/admin/requests" onClick={() => setMobileMenuOpen(false)} className="relative flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3 text-emerald-300">
+                    <span>✅ Перевірка заявок</span>
+                    {pendingRequests > 0 && (
+                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-green-500 px-1.5 text-xs font-black text-white shadow-lg">
+                        {pendingRequests > 9 ? "9+" : pendingRequests}
+                      </span>
+                    )}
                   </Link>
                 )}
                 {isAdmin || isRoot ? (
-                  <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-amber-500/10 px-4 py-3 text-amber-300">
-                    🛠️ Адмін панель
+                  <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="relative flex items-center justify-between rounded-xl bg-amber-500/10 px-4 py-3 text-amber-300">
+                    <span>🛠️ Адмін панель</span>
+                    {pendingUsers > 0 && (
+                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 text-xs font-black text-white shadow-lg">
+                        {pendingUsers > 9 ? "9+" : pendingUsers}
+                      </span>
+                    )}
                   </Link>
                 ) : null}
                 <div className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl">
@@ -212,9 +321,18 @@ export function Header() {
                     </button>
                     <div>
                       <span className="text-white font-medium">{session.user.name}</span>
-                      <span className={`block mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold w-fit ${badge.color}`}>
-                        {badge.label}
-                      </span>
+                      <div className="mt-1">
+                        <MultiRoleBadges
+                          primaryRole={isRoot ? "DEV" : session.user.role}
+                          additionalRoles={session.user.additionalRoles || []}
+                          roleDefs={[
+                            { name: "DEV", label: "DEV", emoji: "💻", color: "from-fuchsia-600 to-indigo-600", textColor: "text-fuchsia-400", power: 999 },
+                            ...roles
+                          ]}
+                          size="sm"
+                          maxVisible={2}
+                        />
+                      </div>
                     </div>
                   </div>
                   <button onClick={() => signOut()} className="rounded-xl bg-red-500/20 px-4 py-2 text-red-300 text-sm">
@@ -231,6 +349,42 @@ export function Header() {
           </div>
         )}
       </div>
+
+      {/* Top Contributors Ticker */}
+      {topContributors.length > 0 && (
+        <div className="border-t border-white/5 bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5 overflow-hidden">
+          <div className="relative flex overflow-hidden py-1.5">
+            <motion.div
+              className="flex gap-8 whitespace-nowrap"
+              animate={{ x: ["-100%", "0%"] }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+            >
+              {[...topContributors, ...topContributors].map((c, idx) => (
+                <div key={`${c.id}-${idx}`} className="flex items-center gap-2 text-xs">
+                  <span className="text-amber-500">🏆</span>
+                  <span className="font-bold text-white">{c.name}</span>
+                  <span className="text-zinc-500">•</span>
+                  <span className="text-amber-400 font-medium">{c.totalAmount.toFixed(0)}₴</span>
+                </div>
+              ))}
+            </motion.div>
+            <motion.div
+              className="flex gap-8 whitespace-nowrap absolute left-full"
+              animate={{ x: ["-100%", "0%"] }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+            >
+              {[...topContributors, ...topContributors].map((c, idx) => (
+                <div key={`${c.id}-dup-${idx}`} className="flex items-center gap-2 text-xs">
+                  <span className="text-amber-500">🏆</span>
+                  <span className="font-bold text-white">{c.name}</span>
+                  <span className="text-zinc-500">•</span>
+                  <span className="text-amber-400 font-medium">{c.totalAmount.toFixed(0)}₴</span>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

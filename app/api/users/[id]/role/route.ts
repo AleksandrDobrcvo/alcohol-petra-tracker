@@ -8,6 +8,7 @@ import { writeAuditLog } from "@/src/server/audit";
 
 const schema = z.object({
   role: z.string().optional(),
+  additionalRoles: z.array(z.string()).optional(),
   moderatesAlco: z.boolean().optional(),
   moderatesPetra: z.boolean().optional(),
   reason: z.string().optional(),
@@ -73,14 +74,24 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       // Note: In dynamic system, we don't automatically demote unless specified
     }
 
-    const updated = await prisma.user.update({
+    // Validate additional roles if provided
+    if (body.additionalRoles) {
+      for (const addRole of body.additionalRoles) {
+        if (!roleDefs.some((r: any) => r.name === addRole)) {
+          throw new ApiError(400, "INVALID_ADDITIONAL_ROLE", `Роль ${addRole} не існує в системі`);
+        }
+      }
+    }
+
+    const updated = await (prisma as any).user.update({
       where: { id },
       data: { 
         role: body.role,
+        additionalRoles: body.additionalRoles,
         moderatesAlco: body.moderatesAlco,
         moderatesPetra: body.moderatesPetra,
       },
-      select: { id: true, name: true, role: true, isBlocked: true, cardNumber: true, moderatesAlco: true, moderatesPetra: true },
+      select: { id: true, name: true, role: true, additionalRoles: true, isBlocked: true, cardNumber: true, moderatesAlco: true, moderatesPetra: true },
     });
 
     await writeAuditLog({
