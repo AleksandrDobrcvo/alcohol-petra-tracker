@@ -10,7 +10,8 @@ import {
   History, 
   Settings, 
   TrendingUp,
-  LayoutDashboard
+  LayoutDashboard,
+  Cog
 } from "lucide-react";
 
 export function AdminHeader({ title, subtitle }: { title: string; subtitle: string }) {
@@ -22,6 +23,7 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
     { href: "/admin/requests", label: "Заявки", icon: CheckCircle2 },
     { href: "/admin/pricing", label: "Ціни", icon: TrendingUp },
     { href: "/admin/audit", label: "Аудит", icon: History },
+    { href: "/admin/settings", label: "⚙️", icon: Cog },
   ];
 
   return (

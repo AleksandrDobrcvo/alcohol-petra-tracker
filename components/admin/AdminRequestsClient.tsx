@@ -87,6 +87,19 @@ export function AdminRequestsClient() {
 
   return (
     <div className="space-y-6">
+      {/* Підказка для адмінів */}
+      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-500/5 border border-amber-500/10">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-[10px] sm:text-xs text-amber-300/80 space-y-0.5 sm:space-y-1">
+            <p className="font-bold text-amber-300">👀 Перевірка заявок:</p>
+            <p>1. Натисніть 🖼️ щоб переглянути скрін</p>
+            <p className="hidden sm:block">2. Перевірте кількість і тип ресурсу</p>
+            <p><span className="text-emerald-400 font-bold">СХВАЛИТИ</span> = виплата • <span className="text-red-400 font-bold">ВІДХИЛИТИ</span> = вказати причину</p>
+          </div>
+        </div>
+      </div>
+      
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-zinc-500" />
@@ -162,71 +175,62 @@ export function AdminRequestsClient() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="group relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300"
+                className="group relative flex flex-col gap-4 sm:gap-6 rounded-xl sm:rounded-[2rem] border border-white/10 bg-white/[0.03] p-4 sm:p-6 backdrop-blur-md hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300"
               >
-                <div className="flex flex-1 items-center gap-6">
-                  <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border shadow-lg transition-transform group-hover:scale-110 ${
+                <div className="flex items-start sm:items-center gap-3 sm:gap-6">
+                  <div className={`flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border shadow-lg ${
                     r.type === 'ALCO' 
                       ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' 
                       : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500'
                   }`}>
-                    {r.type === 'ALCO' ? <Beer className="w-8 h-8" /> : <Sprout className="w-8 h-8" />}
+                    {r.type === 'ALCO' ? <Beer className="w-6 h-6 sm:w-8 sm:h-8" /> : <Sprout className="w-6 h-6 sm:w-8 sm:h-8" />}
                   </div>
                   
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-white text-lg">{r.nickname}</h4>
-                      <span className="text-[10px] text-zinc-600 font-mono">ID: {r.id.slice(0, 8)}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-bold text-white text-base sm:text-lg truncate">{r.nickname}</h4>
+                      <span className="text-[8px] sm:text-[10px] text-zinc-600 font-mono">ID: {r.id.slice(0, 6)}</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-400">
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-zinc-400 mt-1">
+                      <div className="flex items-center gap-1">
                         <User className="w-3 h-3" />
-                        <span>{r.submitter.name}</span>
+                        <span className="truncate max-w-[100px]">{r.submitter.name}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 font-bold text-white">
-                        <span>⭐ {r.stars}</span>
-                        <span className="text-zinc-600 px-1">•</span>
-                        <span>{r.amount.toFixed(2)} ₴</span>
-                        {r.cardLastDigits && (
-                          <>
-                            <span className="text-zinc-600 px-1">•</span>
-                            <span className="text-amber-500 font-mono text-xs">💳 *{r.cardLastDigits}</span>
-                          </>
-                        )}
+                      <div className="flex items-center gap-1 font-bold text-white">
+                        <span>⭐ {r.stars} • {r.quantity}шт</span>
+                        <span className="text-emerald-400">{r.amount.toFixed(0)}₴</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs opacity-60">
-                        <Clock className="w-3 h-3" />
-                        <span>{new Date(r.date).toLocaleString('uk-UA')}</span>
-                      </div>
+                      {r.cardLastDigits && (
+                        <span className="text-amber-500 font-mono text-[10px]">💳 *{r.cardLastDigits}</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 border-t border-white/5 pt-4 sm:pt-0 sm:border-0">
                   <button 
                     onClick={() => setSelectedImg(r.screenshotPath)}
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
+                    className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
                   >
-                    <ImageIcon className="w-5 h-5" />
+                    <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
-
-                  <div className="h-10 w-px bg-white/10 hidden md:block" />
 
                   <div className="flex items-center gap-2">
                     {r.status === 'PENDING' ? (
                       <>
                         <button
                           onClick={() => decide(r.id, 'APPROVED')}
-                          className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 px-6 text-sm font-black text-white shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all active:scale-95"
+                          className="flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 px-4 sm:px-6 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all active:scale-95"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          СХВАЛИТИ
+                          <span className="hidden sm:inline">СХВАЛИТИ</span>
+                          <span className="sm:hidden">✓</span>
                         </button>
                         <button
                           onClick={() => decide(r.id, 'REJECTED')}
-                          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-inner"
+                          className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
                         >
-                          <XCircle className="w-5 h-5" />
+                          <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                       </>
                     ) : (

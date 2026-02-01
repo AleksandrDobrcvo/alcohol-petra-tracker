@@ -5,15 +5,15 @@ import { jsonError, jsonOk } from "@/src/server/http";
 import { ApiError } from "@/src/server/errors";
 import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
-import { mkdir, writeFile } from "fs/promises";
-import { join, extname } from "path";
-import { randomUUID } from "crypto";
 
 const createSchema = z.object({
   nickname: z.string().trim().min(2).max(32),
   type: z.enum(["ALCO", "PETRA"]),
-  stars: z.coerce.number().int().min(1).max(3),
-  quantity: z.coerce.number().int().min(1).default(1),
+  quantities: z.object({
+    stars1: z.number().int().min(0).default(0),
+    stars2: z.number().int().min(0).default(0),
+    stars3: z.number().int().min(0).default(0),
+  }),
   cardLastDigits: z.string().length(6).regex(/^\d+$/).optional(),
 });
 
@@ -70,18 +70,32 @@ export async function POST(req: Request) {
     const raw = {
       nickname: form.get("nickname"),
       type: form.get("type"),
-      stars: form.get("stars"),
-      quantity: form.get("quantity"),
+      quantities: form.get("quantities"),
       cardLastDigits: form.get("cardLastDigits"),
     };
+
+    // Parse quantities JSON
+    let quantitiesObj = { stars1: 0, stars2: 0, stars3: 0 };
+    if (typeof raw.quantities === "string") {
+      try {
+        quantitiesObj = JSON.parse(raw.quantities);
+      } catch {
+        throw new ApiError(400, "INVALID_QUANTITIES", "Некоректний формат кількостей");
+      }
+    }
 
     const parsed = createSchema.parse({
       nickname: typeof raw.nickname === "string" ? raw.nickname : "",
       type: typeof raw.type === "string" ? raw.type : "",
-      stars: typeof raw.stars === "string" ? raw.stars : raw.stars,
-      quantity: typeof raw.quantity === "string" ? raw.quantity : "1",
+      quantities: quantitiesObj,
       cardLastDigits: typeof raw.cardLastDigits === "string" ? raw.cardLastDigits : undefined,
     });
+
+    // Validate at least one quantity > 0
+    const totalQty = parsed.quantities.stars1 + parsed.quantities.stars2 + parsed.quantities.stars3;
+    if (totalQty <= 0) {
+      throw new ApiError(400, "NO_QUANTITY", "Вкажіть кількість хоча б одного ресурсу");
+    }
 
     const screenshot = form.get("screenshot");
     if (!screenshot || typeof screenshot === "string") {
@@ -93,54 +107,67 @@ export async function POST(req: Request) {
     if (buf.byteLength <= 0) {
       throw new ApiError(400, "EMPTY_SCREENSHOT", "Файл скріншоту порожній");
     }
+    if (buf.byteLength > 5 * 1024 * 1024) {
+      throw new ApiError(400, "FILE_TOO_LARGE", "Файл занадто великий (макс 5MB)");
+    }
 
-    const dir = join(process.cwd(), "public", "uploads", "requests");
-    await mkdir(dir, { recursive: true });
+    // Store as base64 data URL
+    const mimeType = file.type || "image/png";
+    const base64 = buf.toString("base64");
+    const screenshotPath = `data:${mimeType};base64,${base64}`;
 
-    const safeExt = extname(file.name || "").slice(0, 10) || ".png";
-    const filename = `${Date.now()}-${randomUUID()}${safeExt}`;
-    const abs = join(dir, filename);
-    await writeFile(abs, buf);
+    // Create separate requests for each star level with qty > 0
+    const createdRequests = [];
+    const starLevels = [
+      { stars: 1, qty: parsed.quantities.stars1 },
+      { stars: 2, qty: parsed.quantities.stars2 },
+      { stars: 3, qty: parsed.quantities.stars3 },
+    ];
 
-    const { quantity, amount } = await calcQuantityAndAmount(parsed.type, parsed.stars, parsed.quantity);
-    const screenshotPath = `/uploads/requests/${filename}`;
+    for (const { stars, qty } of starLevels) {
+      if (qty <= 0) continue;
 
-    const created = await prisma.entryRequest.create({
-      data: {
-        submitterId: ctx.userId,
-        date: new Date(),
-        type: parsed.type,
-        stars: parsed.stars,
-        quantity,
-        amount,
-        nickname: parsed.nickname,
-        screenshotPath,
-        cardLastDigits: parsed.cardLastDigits ?? null,
-        status: "PENDING",
-      },
-      include: {
-        submitter: { select: { id: true, name: true } },
-        decidedBy: { select: { id: true, name: true } },
-      },
-    });
+      const { quantity, amount } = await calcQuantityAndAmount(parsed.type, stars, qty);
 
-    await writeAuditLog({
-      actorUserId: ctx.userId,
-      action: "REQUEST_CREATE",
-      targetType: "EntryRequest",
-      targetId: created.id,
-      after: {
-        type: created.type,
-        stars: created.stars,
-        quantity: created.quantity,
-        amount: created.amount,
-        nickname: created.nickname,
-        screenshotPath: created.screenshotPath,
-        cardLastDigits: created.cardLastDigits,
-      },
-    });
+      const created = await prisma.entryRequest.create({
+        data: {
+          submitterId: ctx.userId,
+          date: new Date(),
+          type: parsed.type,
+          stars,
+          quantity,
+          amount,
+          nickname: parsed.nickname,
+          screenshotPath,
+          cardLastDigits: parsed.cardLastDigits ?? null,
+          status: "PENDING",
+        },
+        include: {
+          submitter: { select: { id: true, name: true } },
+          decidedBy: { select: { id: true, name: true } },
+        },
+      });
 
-    return jsonOk({ request: created }, { status: 201 });
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "REQUEST_CREATE",
+        targetType: "EntryRequest",
+        targetId: created.id,
+        after: {
+          type: created.type,
+          stars: created.stars,
+          quantity: created.quantity,
+          amount: created.amount,
+          nickname: created.nickname,
+          screenshotPath: created.screenshotPath,
+          cardLastDigits: created.cardLastDigits,
+        },
+      });
+
+      createdRequests.push(created);
+    }
+
+    return jsonOk({ requests: createdRequests }, { status: 201 });
   } catch (e) {
     return jsonError(e);
   }

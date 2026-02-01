@@ -2,61 +2,16 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { SessionProvider } from "@/components/SessionProvider";
 import { Header } from "@/components/Header";
-import BeerLoading from "@/components/ui/BeerLoading";
 import Footer from "@/components/ui/Footer";
-// import { ErrorBoundary } from "@/components/ErrorBoundary";
+import BeerLoading from "@/components/ui/BeerLoading";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: {
     default: "Sobranie Clan Tracker - Учет Алко и Петры",
     template: "%s | Sobranie Clan Tracker"
   },
-  description: "Алко / Петра — учёт сдач и выплат клана Sobranie. Отслеживание статистики, управление выплатами, система заявок.",
-  keywords: ["clan", "алко", "петра", "учет", "выплаты", "sobranie", "гильдия", "статистика"],
-  authors: [{ name: "Саня Космос" }],
-  creator: "Саня Космос",
-  publisher: "Sobranie Clan",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  openGraph: {
-    title: "Sobranie Clan Tracker",
-    description: "Алко / Петра — учёт сдач и выплат клана Sobranie",
-    url: "https://your-domain.com",
-    siteName: "Sobranie Clan Tracker",
-    images: [
-      {
-        url: "/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Sobranie Clan Tracker",
-      },
-    ],
-    locale: "uk_UA",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Sobranie Clan Tracker",
-    description: "Алко / Петра — учёт сдач и выплат клана Sobranie",
-    images: ["/og-image.jpg"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  alternates: {
-    canonical: "https://your-domain.com",
-  },
+  description: "Алко / Петра — учёт сдач и выплат клана Sobranie.",
 };
 
 export default function RootLayout({
@@ -69,33 +24,22 @@ export default function RootLayout({
       <body className="min-h-screen bg-clan text-zinc-50 flex flex-col">
         {/* Animated Particles */}
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="particle"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                width: `${Math.random() * 6 + 2}px`,
-                height: `${Math.random() * 6 + 2}px`,
-                animationDelay: `${Math.random() * 15}s`,
-                animationDuration: `${Math.random() * 10 + 10}s`,
-                backgroundColor: i % 3 === 0 ? '#f59e0b' : i % 3 === 1 ? '#10b981' : '#3b82f6',
-                boxShadow: `0 0 10px ${i % 3 === 0 ? '#f59e0b' : i % 3 === 1 ? '#10b981' : '#3b82f6'}`,
-              }}
-            />
-          ))}
+          <div className="particle" style={{ left: '10%', top: '20%', width: '4px', height: '4px', animationDelay: '0s', animationDuration: '15s', backgroundColor: '#f59e0b', boxShadow: '0 0 10px #f59e0b' }} />
+          <div className="particle" style={{ left: '25%', top: '60%', width: '6px', height: '6px', animationDelay: '2s', animationDuration: '18s', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+          <div className="particle" style={{ left: '45%', top: '30%', width: '3px', height: '3px', animationDelay: '4s', animationDuration: '12s', backgroundColor: '#3b82f6', boxShadow: '0 0 10px #3b82f6' }} />
+          <div className="particle" style={{ left: '70%', top: '70%', width: '5px', height: '5px', animationDelay: '6s', animationDuration: '20s', backgroundColor: '#f59e0b', boxShadow: '0 0 10px #f59e0b' }} />
+          <div className="particle" style={{ left: '85%', top: '15%', width: '4px', height: '4px', animationDelay: '8s', animationDuration: '14s', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+          <div className="particle" style={{ left: '55%', top: '85%', width: '7px', height: '7px', animationDelay: '10s', animationDuration: '16s', backgroundColor: '#3b82f6', boxShadow: '0 0 10px #3b82f6' }} />
         </div>
         <SessionProvider>
-          {/* <ErrorBoundary> */}
+          <ToastProvider>
             <Header />
             <main className="flex-1 w-full">
               {children}
             </main>
             <Footer />
-          {/* </ErrorBoundary> */}
+          </ToastProvider>
         </SessionProvider>
-        {/* <Analytics /> */}
         <BeerLoading />
       </body>
     </html>

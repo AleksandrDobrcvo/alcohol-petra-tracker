@@ -19,9 +19,11 @@ import {
   Info,
   RefreshCcw,
   User,
-  Calendar
+  Calendar,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useNotifications } from "@/components/ui/Toast";
 
 type PricingItem = {
   type: "ALCO" | "PETRA";
@@ -97,6 +99,7 @@ function StatusBadge({ status }: { status: RequestRow["status"] }) {
 
 export function EntriesClient() {
   const { data: session } = useSession();
+  const notifications = useNotifications();
   const role = session?.user?.role ?? "MEMBER";
   const canEdit = role === "LEADER" || role === "DEPUTY" || role === "SENIOR";
 
@@ -112,15 +115,15 @@ export function EntriesClient() {
 
   const [prices, setPrices] = useState<PricingItem[]>([]);
 
-  // Форма заявки
+  // Форма заявки - мульти-звезды
   const [reqNickname, setReqNickname] = useState("");
   const [reqType, setReqType] = useState<"ALCO" | "PETRA">("ALCO");
-  const [reqStars, setReqStars] = useState(1);
-  const [reqQuantity, setReqQuantity] = useState(1);
+  const [reqQuantities, setReqQuantities] = useState({ stars1: 0, stars2: 0, stars3: 0 });
   const [reqCardDigits, setReqCardDigits] = useState("");
   const [reqScreenshot, setReqScreenshot] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [screenshotModal, setScreenshotModal] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -163,22 +166,28 @@ export function EntriesClient() {
   }, [entries]);
 
   const estimatedPrice = useMemo(() => {
-    const p = prices.find(x => x.type === reqType && x.stars === reqStars);
-    return (p?.price ?? 0) * reqQuantity;
-  }, [prices, reqType, reqStars, reqQuantity]);
+    let total = 0;
+    [1, 2, 3].forEach((stars) => {
+      const p = prices.find(x => x.type === reqType && x.stars === stars);
+      const qty = reqQuantities[`stars${stars}` as keyof typeof reqQuantities];
+      total += (p?.price ?? stars * 50) * qty;
+    });
+    return total;
+  }, [prices, reqType, reqQuantities]);
+
+  const totalQuantity = reqQuantities.stars1 + reqQuantities.stars2 + reqQuantities.stars3;
 
   async function createRequest() {
     setError(null);
     setSubmitting(true);
     try {
-      if (!reqNickname.trim() || !reqScreenshot || reqCardDigits.length !== 6 || reqQuantity <= 0) {
-        throw new Error("Всі поля обов’язкові, а кількість має бути більше 0");
+      if (!reqNickname.trim() || !reqScreenshot || reqCardDigits.length !== 6 || totalQuantity <= 0) {
+        throw new Error("Всі поля обов'язкові, вкажіть кількість хоча б одного ресурсу");
       }
       const form = new FormData();
       form.append("nickname", reqNickname.trim());
       form.append("type", reqType);
-      form.append("stars", String(reqStars));
-      form.append("quantity", String(reqQuantity));
+      form.append("quantities", JSON.stringify(reqQuantities));
       form.append("cardLastDigits", reqCardDigits);
       form.append("screenshot", reqScreenshot);
       const res = await fetch("/api/requests", {
@@ -189,14 +198,16 @@ export function EntriesClient() {
       if (!json.ok) throw new Error(json.error?.message ?? "Request failed");
       setReqNickname("");
       setReqType("ALCO");
-      setReqStars(1);
-      setReqQuantity(1);
+      setReqQuantities({ stars1: 0, stars2: 0, stars3: 0 });
       setReqCardDigits("");
       setReqScreenshot(null);
       setShowRequestForm(false);
+      notifications.requestSent();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setError(msg);
+      notifications.error("Помилка", msg);
     } finally {
       setSubmitting(false);
     }
@@ -367,6 +378,22 @@ export function EntriesClient() {
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
               >
                 <div className="p-8 pt-0 border-t border-white/5 bg-gradient-to-b from-white/[0.01] to-transparent">
+                  {/* Підказка */}
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-sky-500/5 border border-sky-500/10">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <Info className="w-4 h-4 sm:w-5 sm:h-5 text-sky-400 shrink-0 mt-0.5" />
+                      <div className="text-[10px] sm:text-xs text-sky-300/80 space-y-0.5 sm:space-y-1">
+                        <p className="font-bold text-sky-300">📝 Як подати заявку:</p>
+                        <p className="hidden sm:block">1. Введіть свій ігровий нікнейм</p>
+                        <p className="hidden sm:block">2. Оберіть тип ресурсу (Алко або Петра)</p>
+                        <p><span className="text-amber-400 font-bold">Вкажіть кількість для кожної зірки</span> <span className="hidden sm:inline">(можна всі три в одній заявці!)</span></p>
+                        <p className="hidden sm:block">4. Введіть 6 останніх цифр картки для виплати</p>
+                        <p className="hidden sm:block">5. Завантажте скріншот як доказ</p>
+                        <p className="text-emerald-400 font-medium mt-1 sm:mt-2">✅ Адмін перевірить і схвалить заявку</p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {/* Nickname */}
                     <div className="space-y-2 lg:col-span-2">
@@ -402,35 +429,49 @@ export function EntriesClient() {
                       </div>
                     </div>
 
-                    {/* Stars */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Кількість зірок</label>
-                      <div className="flex gap-2 h-[60px]">
-                        {[1, 2, 3].map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => setReqStars(s)}
-                            className={`flex-1 flex items-center justify-center rounded-[1.25rem] border transition-all ${reqStars === s ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 shadow-inner' : 'bg-black/20 border-white/10 text-zinc-600 hover:border-white/20'}`}
-                          >
-                            <div className="flex flex-col items-center leading-none">
-                              <Star className={`w-3 h-3 mb-0.5 ${reqStars === s ? 'fill-amber-500' : ''}`} />
-                              <span className="text-xs font-black">{s}</span>
+                    {/* Multi-Star Quantities */}
+                    <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1 flex flex-wrap items-center gap-2">
+                        Кількість за зірками
+                        <span className="text-amber-500/50 hidden sm:inline">• Вкажіть скільки штук кожної зірки</span>
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        {[1, 2, 3].map((stars) => {
+                          const qty = reqQuantities[`stars${stars}` as keyof typeof reqQuantities];
+                          return (
+                            <div key={stars} className={`relative rounded-xl sm:rounded-[1.25rem] border transition-all p-2 sm:p-4 ${
+                              qty > 0 
+                                ? 'bg-amber-500/10 border-amber-500/30' 
+                                : 'bg-black/20 border-white/10'
+                            }`}>
+                              <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+                                {Array.from({ length: stars }).map((_, i) => (
+                                  <Star key={i} className={`w-3 h-3 sm:w-4 sm:h-4 ${qty > 0 ? 'text-amber-500 fill-amber-500' : 'text-zinc-600'}`} />
+                                ))}
+                              </div>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                placeholder="0"
+                                className="w-full rounded-lg sm:rounded-xl border border-white/10 bg-black/30 py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base text-white text-center font-black focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:bg-black/50 transition-all placeholder:text-zinc-600"
+                                value={qty > 0 ? qty : ''}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '');
+                                  setReqQuantities(prev => ({
+                                    ...prev,
+                                    [`stars${stars}`]: val === '' ? 0 : parseInt(val, 10)
+                                  }));
+                                }}
+                              />
+                              <div className="text-center mt-1 sm:mt-2 text-[8px] sm:text-[10px] text-zinc-500 font-bold">
+                                {stars === 1 ? '50₴' : stars === 2 ? '100₴' : '150₴'}/шт
+                              </div>
                             </div>
-                          </button>
-                        ))}
+                          );
+                        })}
                       </div>
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Кількість (штук)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full rounded-[1.25rem] border border-white/10 bg-black/20 py-4 px-6 text-white text-center font-black focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all h-[60px]"
-                        value={reqQuantity}
-                        onChange={(e) => setReqQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-                      />
                     </div>
 
                     {/* Card Last 6 Digits */}
@@ -447,9 +488,9 @@ export function EntriesClient() {
                     </div>
 
                     {/* Screenshot */}
-                    <div className="space-y-2 lg:col-span-2">
+                    <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
                       <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Доказ (Скріншот)</label>
-                      <div className={`relative group/file flex items-center justify-center rounded-[1.5rem] border-2 border-dashed transition-all p-8 ${reqScreenshot ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'}`}>
+                      <div className={`relative group/file flex items-center justify-center rounded-xl sm:rounded-[1.5rem] border-2 border-dashed transition-all p-4 sm:p-8 ${reqScreenshot ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'}`}>
                         <input
                           type="file"
                           accept="image/*"
@@ -468,25 +509,43 @@ export function EntriesClient() {
                     </div>
 
                     {/* Info / Estimate */}
-                    <div className="lg:col-span-2 flex items-center gap-6 rounded-[1.5rem] bg-amber-500/5 border border-amber-500/10 p-6">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+                    <div className="col-span-1 md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row items-stretch gap-4 sm:gap-6 rounded-xl sm:rounded-[1.5rem] bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 p-4 sm:p-6">
+                      <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 shrink-0">
                         <Info className="w-8 h-8" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-black text-amber-500/50 uppercase tracking-[0.2em]">Приблизна виплата</p>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-white">{estimatedPrice.toFixed(2)}</span>
+                      <div className="flex-1 text-center sm:text-left">
+                        <p className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.2em]">Приблизна виплата</p>
+                        <div className="flex items-baseline justify-center sm:justify-start gap-2">
+                          <span className="text-3xl sm:text-4xl font-black text-white">{estimatedPrice.toFixed(2)}</span>
                           <span className="text-sm font-bold text-zinc-500 uppercase">гривень</span>
                         </div>
+                        {totalQuantity > 0 && (
+                          <p className="text-[10px] text-zinc-500 mt-1">
+                            📦 {reqQuantities.stars1 > 0 && `${reqQuantities.stars1}×1⭐`}{reqQuantities.stars1 > 0 && reqQuantities.stars2 > 0 && ' + '}{reqQuantities.stars2 > 0 && `${reqQuantities.stars2}×2⭐`}{(reqQuantities.stars1 > 0 || reqQuantities.stars2 > 0) && reqQuantities.stars3 > 0 && ' + '}{reqQuantities.stars3 > 0 && `${reqQuantities.stars3}×3⭐`}
+                          </p>
+                        )}
+                        {[reqQuantities.stars1, reqQuantities.stars2, reqQuantities.stars3].filter(q => q > 0).length > 1 && (
+                          <p className="text-[9px] text-zinc-600 mt-1 italic">
+                            ℹ️ Буде створено {[reqQuantities.stars1, reqQuantities.stars2, reqQuantities.stars3].filter(q => q > 0).length} окремі заявки (по кожній зірці)
+                          </p>
+                        )}
                       </div>
-                      <Button 
-                        size="lg"
-                        className="h-14 px-8 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-black shadow-xl shadow-amber-500/20"
-                        onClick={createRequest} 
-                        disabled={submitting || !reqNickname.trim() || !reqScreenshot}
+                      <button 
+                        onClick={createRequest}
+                        disabled={submitting || !reqNickname.trim() || !reqScreenshot || totalQuantity <= 0 || reqCardDigits.length !== 6}
+                        className="w-full sm:w-auto h-14 sm:h-16 px-8 sm:px-12 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-base sm:text-lg font-black shadow-2xl shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-3"
                       >
-                        {submitting ? "ВІДПРАВКА..." : "ПОДАТИ ЗАЯВКУ"}
-                      </Button>
+                        {submitting ? (
+                          <>
+                            <RefreshCcw className="w-5 h-5 animate-spin" />
+                            ВІДПРАВКА...
+                          </>
+                        ) : (
+                          <>
+                            🚀 ПОДАТИ ЗАЯВКУ
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -530,6 +589,12 @@ export function EntriesClient() {
                           <StatusBadge status={r.status} />
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-1">
+                          <span className="flex items-center gap-0.5">
+                            {Array.from({ length: r.stars }).map((_, i) => (
+                              <Star key={i} className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            ))}
+                          </span>
+                          <span>•</span>
                           <span className="font-mono">{r.quantity} шт</span>
                           <span>•</span>
                           <span className="font-bold text-zinc-300">{Number(r.amount).toFixed(2)} ₴</span>
@@ -546,14 +611,12 @@ export function EntriesClient() {
                       <div className="text-[9px] text-zinc-600 uppercase font-black text-right hidden sm:block">
                         {r.submitter.name}
                       </div>
-                      <a
-                        href={r.screenshotPath}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        onClick={() => setScreenshotModal(r.screenshotPath)}
                         className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white transition-all"
                       >
                         <ImageIcon className="w-3.5 h-3.5" />
-                      </a>
+                      </button>
                     </div>
                   </div>
                   {r.decisionNote && (
@@ -634,6 +697,39 @@ export function EntriesClient() {
           </div>
         </div>
       </div>
+
+      {/* Screenshot Modal */}
+      <AnimatePresence>
+        {screenshotModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setScreenshotModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-4xl max-h-[90vh] overflow-auto rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setScreenshotModal(null)}
+                className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-black/50 text-white hover:bg-black/70 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img 
+                src={screenshotModal} 
+                alt="Скріншот" 
+                className="max-w-full h-auto rounded-2xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
