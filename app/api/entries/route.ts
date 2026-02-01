@@ -42,7 +42,7 @@ export async function GET(req: Request) {
           : undefined,
     } as const;
 
-    const entries = await prisma.entry.findMany({
+    const entries = await (prisma as any).entry.findMany({
       where,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
@@ -67,6 +67,7 @@ export async function GET(req: Request) {
 
     return jsonOk({ entries });
   } catch (e) {
+    console.error("[GET /api/entries] Error:", e);
     return jsonError(e);
   }
 }

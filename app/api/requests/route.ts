@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       type: q.type,
     } as const;
 
-    const requests = await prisma.entryRequest.findMany({
+    const requests = await (prisma as any).entryRequest.findMany({
       where,
       orderBy: [{ createdAt: "desc" }],
       include: {
@@ -58,6 +58,7 @@ export async function GET(req: Request) {
 
     return jsonOk({ requests });
   } catch (e) {
+    console.error("[GET /api/requests] Error:", e);
     return jsonError(e);
   }
 }
