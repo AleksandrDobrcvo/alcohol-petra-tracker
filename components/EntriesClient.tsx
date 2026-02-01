@@ -42,9 +42,23 @@ type EntryRow = {
   paidAt: string | null;
   submitter: { id: string; name: string };
   entryRequest?: {
+    id: string;
     screenshotPath: string;
     nickname: string;
   } | null;
+};
+
+// Grouped entry for display (multiple star types in one card)
+type GroupedEntry = {
+  requestId: string | null;
+  date: string;
+  type: "ALCO" | "PETRA";
+  submitter: { id: string; name: string };
+  paymentStatus: "PAID" | "UNPAID";
+  screenshotPath?: string;
+  nickname?: string;
+  starEntries: Array<{ stars: number; quantity: number; amount: number }>;
+  totalAmount: number;
 };
 
 type RequestRow = {
@@ -181,6 +195,51 @@ export function EntriesClient() {
   }, [prices, reqType, reqQuantities]);
 
   const totalQuantity = reqQuantities.stars1 + reqQuantities.stars2 + reqQuantities.stars3;
+
+  // Group entries by requestId for compact display
+  const groupedEntries = useMemo(() => {
+    const groups = new Map<string, GroupedEntry>();
+    
+    entries.forEach(entry => {
+      const key = entry.entryRequest?.id || `standalone-${entry.id}`;
+      
+      if (!groups.has(key)) {
+        groups.set(key, {
+          requestId: entry.entryRequest?.id || null,
+          date: entry.date,
+          type: entry.type,
+          submitter: entry.submitter,
+          paymentStatus: entry.paymentStatus,
+          screenshotPath: entry.entryRequest?.screenshotPath,
+          nickname: entry.entryRequest?.nickname,
+          starEntries: [],
+          totalAmount: 0,
+        });
+      }
+      
+      const group = groups.get(key)!;
+      group.starEntries.push({
+        stars: entry.stars,
+        quantity: entry.quantity,
+        amount: Number(entry.amount),
+      });
+      group.totalAmount += Number(entry.amount);
+      
+      // Update payment status - if any entry is unpaid, the group is unpaid
+      if (entry.paymentStatus === 'UNPAID') {
+        group.paymentStatus = 'UNPAID';
+      }
+    });
+    
+    // Sort star entries within each group
+    groups.forEach(group => {
+      group.starEntries.sort((a, b) => a.stars - b.stars);
+    });
+    
+    return Array.from(groups.values()).sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [entries]);
 
   async function createRequest() {
     setError(null);
@@ -667,51 +726,55 @@ export function EntriesClient() {
           </div>
 
           <div className="space-y-3">
-            {entries.length === 0 ? (
+            {groupedEntries.length === 0 ? (
               <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.01] p-10 text-center">
                 <p className="text-zinc-600 font-medium text-sm">Записів ще немає</p>
               </div>
             ) : (
-              entries.map((e, idx) => (
+              groupedEntries.map((g, idx) => (
                 <motion.div
-                  key={e.id}
+                  key={g.requestId || `group-${idx}`}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   className="relative rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-4 flex items-center justify-between group overflow-hidden"
                 >
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${e.paymentStatus === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${g.paymentStatus === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                   
                   <div className="flex items-center gap-3">
                     <div className="text-center min-w-[40px]">
-                      <div className="text-[9px] font-black text-zinc-600 uppercase leading-none">{new Date(e.date).toLocaleDateString('uk-UA', { month: 'short' })}</div>
-                      <div className="text-lg font-black text-white leading-tight">{new Date(e.date).getDate()}</div>
+                      <div className="text-[9px] font-black text-zinc-600 uppercase leading-none">{new Date(g.date).toLocaleDateString('uk-UA', { month: 'short' })}</div>
+                      <div className="text-lg font-black text-white leading-tight">{new Date(g.date).getDate()}</div>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{e.submitter.name}</span>
+                        <span className="font-bold text-white text-sm">{g.submitter.name}</span>
                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full backdrop-blur-md border transition-all ${
-                          e.paymentStatus === 'PAID' 
+                          g.paymentStatus === 'PAID' 
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
                             : 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse'
                         }`}>
-                          {e.paymentStatus === 'PAID' ? 'ОПЛАЧЕНО' : 'В ЧЕРЗІ'}
+                          {g.paymentStatus === 'PAID' ? 'ОПЛАЧЕНО' : 'В ЧЕРЗІ'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
-                        <span>{e.type === 'ALCO' ? '🍺 Алко' : '💎 Петра'}</span>
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5 flex-wrap">
+                        <span>{g.type === 'ALCO' ? '🍺 Алко' : '💎 Петра'}</span>
                         <span>•</span>
-                        <span>{e.stars} ⭐</span>
-                        <span>•</span>
-                        <span>{e.quantity} шт</span>
+                        {g.starEntries.map((se, i) => (
+                          <span key={i} className="inline-flex items-center gap-0.5">
+                            {i > 0 && <span className="text-zinc-700 mx-0.5">|</span>}
+                            <span className="text-amber-400">{se.stars}⭐</span>
+                            <span className="text-zinc-400">×{se.quantity}</span>
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {e.entryRequest?.screenshotPath && (
+                    {g.screenshotPath && (
                       <button
-                        onClick={() => setScreenshotModal(e.entryRequest!.screenshotPath)}
+                        onClick={() => setScreenshotModal(g.screenshotPath!)}
                         className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-white hover:bg-white/10 transition-all"
                         title="Переглянути скріншот"
                       >
@@ -719,7 +782,7 @@ export function EntriesClient() {
                       </button>
                     )}
                     <div className="text-right">
-                      <div className="text-base font-black text-white leading-none">{Number(e.amount).toFixed(2)}</div>
+                      <div className="text-base font-black text-white leading-none">{g.totalAmount.toFixed(2)}</div>
                       <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">Гривень</div>
                     </div>
                   </div>

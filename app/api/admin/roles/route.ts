@@ -14,15 +14,38 @@ const roleSchema = z.object({
   desc: z.string().optional(),
 });
 
+// Default roles to seed if database is empty
+const DEFAULT_ROLES = [
+  { name: "LEADER", label: "Лідер", emoji: "👑", color: "from-amber-500 to-yellow-500", textColor: "text-amber-400", power: 100 },
+  { name: "DEPUTY", label: "Заступник", emoji: "⭐", color: "from-amber-400 to-orange-400", textColor: "text-orange-400", power: 80 },
+  { name: "SENIOR", label: "Старший", emoji: "🛡️", color: "from-amber-500/50 to-amber-600/50", textColor: "text-amber-300", power: 60 },
+  { name: "ALCO_STAFF", label: "Алко-персонал", emoji: "🍺", color: "from-emerald-500/50 to-emerald-600/50", textColor: "text-emerald-400", power: 40 },
+  { name: "PETRA_STAFF", label: "Петра-персонал", emoji: "🌿", color: "from-emerald-500/50 to-teal-600/50", textColor: "text-teal-400", power: 40 },
+  { name: "MEMBER", label: "Учасник", emoji: "✅", color: "from-sky-500/50 to-sky-600/50", textColor: "text-sky-400", power: 20 },
+];
+
 export async function GET() {
   try {
-    const ctx = await requireSession();
-    // Only leaders and deputies can manage roles
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY"]);
+    // Allow all authenticated users to view roles (for UI display)
+    await requireSession();
 
-    const roles = await (prisma as any).roleDefinition.findMany({
+    let roles = await (prisma as any).roleDefinition.findMany({
       orderBy: { power: "desc" },
     });
+
+    // Auto-seed default roles if none exist
+    if (roles.length === 0) {
+      for (const role of DEFAULT_ROLES) {
+        await (prisma as any).roleDefinition.upsert({
+          where: { name: role.name },
+          update: role,
+          create: role,
+        });
+      }
+      roles = await (prisma as any).roleDefinition.findMany({
+        orderBy: { power: "desc" },
+      });
+    }
 
     return jsonOk({ roles });
   } catch (e) {

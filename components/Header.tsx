@@ -24,7 +24,7 @@ export function Header() {
   // Role badge config
   const getRoleBadge = () => {
     if (!session?.user) return { label: '', color: '' };
-    if (isRoot) return { label: '💎 ROOT', color: 'bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white shadow-lg shadow-fuchsia-500/20' };
+    if (isRoot) return { label: '💻 DEV', color: 'bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white shadow-lg shadow-fuchsia-500/20' };
     
     const role = session.user.role;
     const isApproved = session.user.isApproved;
