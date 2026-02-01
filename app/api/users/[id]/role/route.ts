@@ -13,6 +13,20 @@ const schema = z.object({
   reason: z.string().optional(),
 });
 
+// Role hierarchy - higher number = more power
+const ROLE_POWER: Record<string, number> = {
+  LEADER: 100,
+  DEPUTY: 80,
+  SENIOR: 60,
+  ALCO_STAFF: 40,
+  PETRA_STAFF: 40,
+  MEMBER: 20,
+};
+
+function getRolePower(role: string): number {
+  return ROLE_POWER[role] ?? 0;
+}
+
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
@@ -24,9 +38,50 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) return jsonOk({ user: null }, { status: 404 });
 
-    // LEADER cannot be downgraded
-    if (target.role === "LEADER" && body.role && body.role !== "LEADER") {
-      throw new ApiError(400, "LEADER_IMMUTABLE", "LEADER role cannot be changed");
+    const actor = await prisma.user.findUnique({ where: { id: ctx.userId } });
+    if (!actor) throw new ApiError(403, "ACTOR_NOT_FOUND", "Користувача не знайдено");
+
+    const actorPower = getRolePower(actor.role);
+    const targetPower = getRolePower(target.role);
+    const newRolePower = body.role ? getRolePower(body.role) : targetPower;
+
+    // Rule 1: Cannot change your own role (except LEADER transferring leadership)
+    if (id === ctx.userId && actor.role !== "LEADER") {
+      throw new ApiError(403, "CANNOT_CHANGE_OWN_ROLE", "Ви не можете змінити свою роль");
+    }
+
+    // Rule 2: Cannot modify someone with same or higher power (except LEADER)
+    if (targetPower >= actorPower && actor.role !== "LEADER") {
+      throw new ApiError(403, "INSUFFICIENT_POWER", "Ви не можете змінювати користувача з такою ж або вищою роллю");
+    }
+
+    // Rule 3: Cannot assign role higher than or equal to your own (except LEADER)
+    if (body.role && newRolePower >= actorPower && actor.role !== "LEADER") {
+      throw new ApiError(403, "ROLE_TOO_HIGH", "Ви не можете призначити роль вищу або рівну вашій");
+    }
+
+    // Rule 4: Only LEADER can assign LEADER role (transfer leadership)
+    if (body.role === "LEADER" && actor.role !== "LEADER") {
+      throw new ApiError(403, "LEADER_ONLY", "Тільки Лідер може передати лідерство");
+    }
+
+    // Rule 5: If transferring leadership, demote current leader
+    let leadershipTransfer = false;
+    if (body.role === "LEADER" && actor.role === "LEADER" && id !== ctx.userId) {
+      leadershipTransfer = true;
+      // Demote current leader to DEPUTY
+      await prisma.user.update({
+        where: { id: ctx.userId },
+        data: { role: "DEPUTY" },
+      });
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "USER_ROLE_CHANGE",
+        targetType: "User",
+        targetId: ctx.userId,
+        before: { role: "LEADER" },
+        after: { role: "DEPUTY", reason: "Передача лідерства" },
+      });
     }
 
     const updated = await prisma.user.update({
@@ -45,10 +100,10 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       targetType: "User",
       targetId: id,
       before: { role: target.role },
-      after: { role: updated.role, reason: body.reason || "No reason provided" },
+      after: { role: updated.role, reason: body.reason || (leadershipTransfer ? "Передача лідерства" : "Без причини") },
     });
 
-    return jsonOk({ user: updated });
+    return jsonOk({ user: updated, leadershipTransfer });
   } catch (e) {
     return jsonError(e);
   }

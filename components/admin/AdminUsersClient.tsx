@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, 
@@ -32,12 +33,40 @@ type UserRow = {
 };
 
 export function AdminUsersClient() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [reason, setReason] = useState("");
+
+  // Role hierarchy - higher = more power
+  const ROLE_POWER: Record<string, number> = {
+    LEADER: 100,
+    DEPUTY: 80,
+    SENIOR: 60,
+    ALCO_STAFF: 40,
+    PETRA_STAFF: 40,
+    MEMBER: 20,
+  };
+
+  const myRole = session?.user?.role || "MEMBER";
+  const myPower = ROLE_POWER[myRole] || 0;
+
+  // Check if current user can modify target user
+  function canModifyUser(target: UserRow): boolean {
+    if (myRole === "LEADER") return true;
+    const targetPower = ROLE_POWER[target.role] || 0;
+    return targetPower < myPower;
+  }
+
+  // Check if current user can assign a specific role
+  function canAssignRole(role: string): boolean {
+    if (myRole === "LEADER") return true;
+    const rolePower = ROLE_POWER[role] || 0;
+    return rolePower < myPower;
+  }
 
   async function load() {
     setLoading(true);
@@ -236,10 +265,17 @@ export function AdminUsersClient() {
                   
                   <button
                     onClick={() => setSelectedUser(u)}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:bg-amber-500/20 hover:border-amber-500/30 transition-all"
+                    disabled={!canModifyUser(u)}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
+                      canModifyUser(u) 
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30' 
+                        : 'bg-zinc-800/50 text-zinc-600 border border-zinc-700/50 cursor-not-allowed'
+                    }`}
+                    title={!canModifyUser(u) ? 'Неможливо змінити (роль вища або рівна вашій)' : 'Керування роллю'}
                   >
                     <Shield className="w-3.5 h-3.5" />
                     Роль
+                    {!canModifyUser(u) && <span className="text-[8px]">🔒</span>}
                   </button>
 
                   <button
@@ -288,53 +324,77 @@ export function AdminUsersClient() {
               <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
                 <div className="space-y-3">
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Виберіть роль</p>
+                  {myRole !== "LEADER" && (
+                    <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 mb-4">
+                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <p className="text-[10px] text-amber-400">
+                        Ви можете призначати тільки ролі нижчі за вашу ({myRole === 'DEPUTY' ? 'Заступник' : myRole === 'SENIOR' ? 'Старший' : myRole})
+                      </p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-3">
-                    {(['LEADER', 'DEPUTY', 'SENIOR', 'ALCO_STAFF', 'PETRA_STAFF', 'MEMBER'] as const).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => updatePermissions(selectedUser.id, { role: r })}
-                        disabled={selectedUser.role === r || (selectedUser.role === 'LEADER' && r !== 'LEADER')}
-                        className={`group relative flex items-center gap-4 rounded-[1.5rem] border p-4 text-left transition-all ${
-                          selectedUser.role === r
-                            ? 'border-amber-500/50 bg-amber-500/10'
-                            : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                          r === 'LEADER' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
-                          r === 'DEPUTY' ? 'bg-sky-500/20 border-sky-500/30 text-sky-500' :
-                          r === 'SENIOR' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' :
-                          'bg-zinc-500/20 border-zinc-500/30 text-zinc-400'
-                        }`}>
-                          {r === 'LEADER' ? '👑' : r === 'DEPUTY' ? '🛡️' : r === 'SENIOR' ? '⚔️' : r.includes('STAFF') ? '📋' : '👤'}
-                        </div>
-                        <div className="flex-1">
-                          <p className={`text-xs font-bold uppercase tracking-widest ${
-                            selectedUser.role === r ? 'text-white' : 'text-zinc-500'
+                    {(['LEADER', 'DEPUTY', 'SENIOR', 'ALCO_STAFF', 'PETRA_STAFF', 'MEMBER'] as const).map((r) => {
+                      const canAssign = canAssignRole(r);
+                      const isCurrentRole = selectedUser.role === r;
+                      const isSameUser = selectedUser.id === session?.user?.id;
+                      const isDisabled = isCurrentRole || !canAssign || (isSameUser && myRole !== 'LEADER');
+                      
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => updatePermissions(selectedUser.id, { role: r })}
+                          disabled={isDisabled}
+                          className={`group relative flex items-center gap-4 rounded-[1.5rem] border p-4 text-left transition-all ${
+                            isCurrentRole
+                              ? 'border-amber-500/50 bg-amber-500/10'
+                              : !canAssign 
+                                ? 'border-white/5 bg-white/5 opacity-30 cursor-not-allowed' 
+                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                          } disabled:cursor-not-allowed`}
+                        >
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
+                            r === 'LEADER' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
+                            r === 'DEPUTY' ? 'bg-sky-500/20 border-sky-500/30 text-sky-500' :
+                            r === 'SENIOR' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' :
+                            'bg-zinc-500/20 border-zinc-500/30 text-zinc-400'
                           }`}>
-                            {r === 'LEADER' ? 'Лідер' : 
-                             r === 'DEPUTY' ? 'Заступник' : 
-                             r === 'SENIOR' ? 'Старший' : 
-                             r === 'ALCO_STAFF' ? 'Сл. Алко' : 
-                             r === 'PETRA_STAFF' ? 'Сл. Петра' : 
-                             'Учасник'}
-                          </p>
-                          <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
-                            {r === 'LEADER' ? 'Повний доступ до всього' : 
-                             r === 'DEPUTY' ? 'Високий рівень доступу та керування' : 
-                             r === 'SENIOR' ? 'Розширені права модерації' :
-                             r === 'ALCO_STAFF' ? 'Модерація алкоголю' :
-                             r === 'PETRA_STAFF' ? 'Модерація петри' :
-                             'Звичайний учасник клану'}
-                          </p>
-                        </div>
-                        {selectedUser.role === r && (
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-black shadow-lg">
-                            ✓
+                            {r === 'LEADER' ? '👑' : r === 'DEPUTY' ? '🛡️' : r === 'SENIOR' ? '⚔️' : r.includes('STAFF') ? '📋' : '👤'}
                           </div>
-                        )}
-                      </button>
-                    ))}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={`text-xs font-bold uppercase tracking-widest ${
+                                isCurrentRole ? 'text-white' : 'text-zinc-500'
+                              }`}>
+                                {r === 'LEADER' ? 'Лідер' : 
+                                 r === 'DEPUTY' ? 'Заступник' : 
+                                 r === 'SENIOR' ? 'Старший' : 
+                                 r === 'ALCO_STAFF' ? 'Сл. Алко' : 
+                                 r === 'PETRA_STAFF' ? 'Сл. Петра' : 
+                                 'Учасник'}
+                              </p>
+                              {!canAssign && !isCurrentRole && (
+                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">
+                                  🔒
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
+                              {r === 'LEADER' ? 'Повний доступ до всього' : 
+                               r === 'DEPUTY' ? 'Високий рівень доступу та керування' : 
+                               r === 'SENIOR' ? 'Розширені права модерації' :
+                               r === 'ALCO_STAFF' ? 'Модерація алкоголю' :
+                               r === 'PETRA_STAFF' ? 'Модерація петри' :
+                               'Звичайний учасник клану'}
+                            </p>
+                          </div>
+                          {isCurrentRole && (
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-black shadow-lg">
+                              ✓
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
