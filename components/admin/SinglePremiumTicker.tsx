@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { Trophy } from "lucide-react";
-import { useEffect, useState } from "react";
 
 type Contributor = {
   id: string;
@@ -10,8 +9,8 @@ type Contributor = {
   totalAmount: number;
 };
 
-export function PremiumTicker({ contributors }: { contributors: Contributor[] }) {
-  // Limit to 15 items max and ensure no duplicates in sequence
+export function SinglePremiumTicker({ contributors }: { contributors: Contributor[] }) {
+  // Limit to 15 items max
   const limitedContributors = contributors.length > 0 
     ? contributors.slice(0, 15)
     : [
@@ -20,7 +19,7 @@ export function PremiumTicker({ contributors }: { contributors: Contributor[] })
         { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
       ];
 
-  // Create double track for seamless infinite loop
+  // Create double content for seamless loop within SINGLE track
   const trackContent = [...limitedContributors, ...limitedContributors];
 
   return (
@@ -29,7 +28,9 @@ export function PremiumTicker({ contributors }: { contributors: Contributor[] })
       <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
       
+      {/* SINGLE wrapper with hidden overflow */}
       <div className="flex whitespace-nowrap items-center w-full">
+        {/* SINGLE moving track containing duplicated content */}
         <motion.div
           className="flex gap-16 items-center px-8"
           animate={{ x: ["0%", "-50%"] }}
@@ -43,7 +44,7 @@ export function PremiumTicker({ contributors }: { contributors: Contributor[] })
           {trackContent.map((contributor, idx) => (
             <div 
               key={`${contributor.id || contributor.name}-${idx}`} 
-              className="flex items-center gap-4 hover:scale-105 transition-transform duration-300 ease-out cursor-default"
+              className="flex items-center gap-4 hover:scale-105 transition-transform duration-300 ease-out cursor-default flex-shrink-0"
             >
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10">

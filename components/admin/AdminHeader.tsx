@@ -14,7 +14,7 @@ import {
   Shield
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { PremiumTicker } from "./PremiumTicker";
+import { SinglePremiumTicker } from "./SinglePremiumTicker";
 
 type TopContributor = {
   id: string;
@@ -72,7 +72,8 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
 
   return (
     <>
-      <PremiumTicker contributors={topContributors.map(c => ({
+      {/* ONLY ONE PREMIUM TICKER - SINGLE INSTANCE */}
+      <SinglePremiumTicker contributors={topContributors.map(c => ({
         id: c.id,
         name: c.name,
         totalAmount: c.totalAmount
