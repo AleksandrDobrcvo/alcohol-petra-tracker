@@ -72,7 +72,7 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
 
   return (
     <>
-      {/* ONLY ONE PREMIUM TICKER - SINGLE INSTANCE */}
+      {/* PREMIUM ADMIN TICKER - RIGHT TO LEFT SCROLL */}
       <SinglePremiumTicker contributors={topContributors.map(c => ({
         id: c.id,
         name: c.name,

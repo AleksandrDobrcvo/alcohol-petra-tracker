@@ -28,14 +28,14 @@ export function SinglePremiumTicker({ contributors }: { contributors: Contributo
       <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
       
-      {/* SINGLE wrapper with hidden overflow */}
+      {/* SINGLE wrapper with hidden overflow - full width */}
       <div className="flex whitespace-nowrap items-center w-full">
-        {/* SINGLE moving track containing duplicated content */}
+        {/* SINGLE moving track containing duplicated content - ensure full width */}
         <motion.div
-          className="flex gap-16 items-center px-8"
-          animate={{ x: ["0%", "-50%"] }}
+          className="flex gap-16 items-center px-8 min-w-max"
+          animate={{ x: ["0%", "-100%"] }}
           transition={{ 
-            duration: 30,
+            duration: 40,
             repeat: Infinity, 
             ease: "linear",
             repeatType: "loop"
