@@ -81,9 +81,9 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
         <div className="flex whitespace-nowrap items-center">
           <motion.div
             className="flex gap-12 items-center px-6"
-            animate={{ x: ["-50%", "0%"] }}
+            animate={{ x: ["-100%", "0%"] }}
             transition={{ 
-              duration: topContributors.length > 0 ? Math.max(20, topContributors.length * 10) : 30, 
+              duration: topContributors.length > 0 ? Math.max(40, topContributors.length * 20) : 60, 
               repeat: Infinity, 
               ease: "linear" 
             }}
