@@ -48,7 +48,7 @@ export function Header() {
     // Fetch stats (online count + top contributors)
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/stats", { cache: "no-store" });
+        const res = await fetch("/api/stats", { cache: "no-store", headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' } });
         const json = await res.json();
         if (json.ok) {
           setOnlineCount(json.data.onlineCount || 0);
@@ -358,54 +358,66 @@ export function Header() {
       </div>
 
       {/* Top Contributors Ticker */}
-      <div className="border-t border-white/5 bg-black/40 overflow-hidden h-9 flex items-center">
-        <div className="flex whitespace-nowrap">
+      <div className="relative border-t border-white/5 bg-black/40 overflow-hidden h-10 flex items-center select-none group/ticker">
+        {/* Gradient Fades */}
+        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
+        
+        <div className="flex whitespace-nowrap items-center">
           <motion.div
-            className="flex gap-12 items-center px-4"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+            className="flex gap-12 items-center px-6"
+            animate={{ x: ["-100%", "0%"] }}
+            transition={{ 
+              duration: topContributors.length > 0 ? Math.max(20, topContributors.length * 10) : 30, 
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
           >
-            {/* If no contributors, show placeholders to make it "wow" always */}
-            {(topContributors.length > 0 ? [...topContributors, ...topContributors, ...topContributors, ...topContributors] : [
+            {/* Duplicate content for seamless loop */}
+            {(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0 },
               { name: "Склад поповнюється...", totalAmount: 0 },
               { name: "Будь першим!", totalAmount: 0 }
-            ].map(x => ({ ...x, id: Math.random().toString() }))).map((c: any, idx) => (
-              <div key={`${c.id}-${idx}`} className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">🏆</span>
-                  <span className="font-black text-[11px] text-white uppercase tracking-tighter">{c.name}</span>
+            ]).map((c: any, idx) => (
+              <div key={`${c.id || idx}-1`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                    <Trophy className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-black text-xs text-white uppercase tracking-tight group-hover/ticker:text-amber-400 transition-colors">
+                    {c.name}
+                  </span>
                 </div>
                 {c.totalAmount > 0 && (
-                  <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toFixed(0)}₴</span>
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toLocaleString()} ₴</span>
                   </div>
                 )}
-                <span className="text-zinc-800 font-black">/</span>
+                <span className="text-white/10 font-black">/</span>
               </div>
             ))}
-          </motion.div>
-          <motion.div
-            className="flex gap-12 items-center px-4"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-          >
-            {(topContributors.length > 0 ? [...topContributors, ...topContributors, ...topContributors, ...topContributors] : [
+            
+            {/* Original content repeated for seamless loop */}
+            {(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0 },
               { name: "Склад поповнюється...", totalAmount: 0 },
               { name: "Будь першим!", totalAmount: 0 }
-            ].map(x => ({ ...x, id: Math.random().toString() }))).map((c: any, idx) => (
-              <div key={`${c.id}-dup-${idx}`} className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">🏆</span>
-                  <span className="font-black text-[11px] text-white uppercase tracking-tighter">{c.name}</span>
+            ]).map((c: any, idx) => (
+              <div key={`${c.id || idx}-2`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                    <Trophy className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-black text-xs text-white uppercase tracking-tight group-hover/ticker:text-amber-400 transition-colors">
+                    {c.name}
+                  </span>
                 </div>
                 {c.totalAmount > 0 && (
-                  <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toFixed(0)}₴</span>
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toLocaleString()} ₴</span>
                   </div>
                 )}
-                <span className="text-zinc-800 font-black">/</span>
+                <span className="text-white/10 font-black">/</span>
               </div>
             ))}
           </motion.div>

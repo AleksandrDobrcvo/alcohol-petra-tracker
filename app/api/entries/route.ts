@@ -5,6 +5,8 @@ import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
+import { canManageRequests } from "@/src/server/rbac";
+import { ApiError } from "@/src/server/errors";
 
 const entryCreateSchema = z.object({
   date: z.string().datetime(),
@@ -46,9 +48,9 @@ export async function GET(req: Request) {
       where,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
-        submitter: { select: { id: true, name: true, role: true } },
-        createdBy: { select: { id: true, name: true, role: true } },
-        updatedBy: { select: { id: true, name: true, role: true } },
+        submitter: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
+        createdBy: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
+        updatedBy: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
         entryRequest: {
           select: {
             id: true,
@@ -59,7 +61,7 @@ export async function GET(req: Request) {
             decisionNote: true,
             cardLastDigits: true,
             createdAt: true,
-            decidedBy: { select: { id: true, name: true, role: true } },
+            decidedBy: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
           }
         }
       },
@@ -75,7 +77,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
+    // Check if user has permission to manage requests
+    const hasPermission = await canManageRequests(ctx);
+    if (!hasPermission) {
+      throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to create entries");
+    }
     
     const body = entryCreateSchema.parse(await req.json());
     const { quantity, amount } = await calcQuantityAndAmount(body.type, body.stars, body.quantity);

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertCanModerateOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { ApiError } from "@/src/server/errors";
 import { writeAuditLog } from "@/src/server/audit";
 import { calcQuantityAndAmount } from "@/src/server/entryCalc";
+import { canManageRequests } from "@/src/server/rbac";
 
 const schema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
@@ -25,7 +25,24 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       throw new ApiError(400, "ALREADY_DECIDED", "Цю заявку вже опрацьовано");
     }
 
-    assertCanModerateOrThrow(ctx, existing.type as "ALCO" | "PETRA");
+    // Check if user has permission to manage requests
+    const hasPermission = await canManageRequests(ctx);
+    if (!hasPermission) {
+      // Fallback to legacy moderation check
+      const canModerateLegacy = await import("@/src/server/rbac").then(
+        ({ assertCanModerateOrThrow }) => {
+          try {
+            assertCanModerateOrThrow(ctx, existing.type as "ALCO" | "PETRA");
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      );
+      if (!canModerateLegacy) {
+        throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to decide on this request");
+      }
+    }
 
     if (body.status === "REJECTED") {
       const updated = await prisma.entryRequest.update({

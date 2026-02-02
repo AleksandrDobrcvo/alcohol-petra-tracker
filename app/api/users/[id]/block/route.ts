@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { writeAuditLog } from "@/src/server/audit";
+import { canManageUsers, canBanUsers } from "@/src/server/rbac";
 import { ApiError } from "@/src/server/errors";
 
 const schema = z.object({
@@ -15,7 +15,16 @@ const schema = z.object({
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
+    // Check if user has permission to ban users (more specific permission)
+    const hasPermission = await canBanUsers(ctx);
+    if (!hasPermission) {
+      // Fallback to general user management permission
+      const hasGeneralPermission = await canManageUsers(ctx);
+      if (!hasGeneralPermission) {
+        throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to block users");
+      }
+    }
 
     const id = ctx2.params.id;
     const body = schema.parse(await req.json());
@@ -80,4 +89,3 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     return jsonError(e);
   }
 }
-

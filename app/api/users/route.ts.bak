@@ -1,5 +1,6 @@
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
+import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { canManageUsers } from "@/src/server/rbac";
 import { ApiError } from "@/src/server/errors";
@@ -42,3 +43,9 @@ export async function GET() {
     return jsonError(e);
   }
 }
+
+  } catch (e) {
+    return jsonError(e);
+  }
+}
+

@@ -20,15 +20,26 @@ import {
   RefreshCcw,
   User,
   Calendar,
-  X
+  X,
+  Shield,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useNotifications } from "@/components/ui/Toast";
+import { MultiRoleBadges, RoleDef } from "@/components/ui/RoleBadge";
 
 type PricingItem = {
   type: "ALCO" | "PETRA";
   stars: number;
   price: number;
+};
+
+type UserMinimal = { 
+  id: string; 
+  name: string; 
+  role: string; 
+  discordId: string;
+  additionalRoles?: string[];
 };
 
 type EntryRow = {
@@ -40,11 +51,12 @@ type EntryRow = {
   amount: string;
   paymentStatus: "PAID" | "UNPAID";
   paidAt: string | null;
-  submitter: { id: string; name: string };
+  submitter: UserMinimal;
   entryRequest?: {
     id: string;
     screenshotPath: string;
     nickname: string;
+    decidedBy?: UserMinimal | null;
   } | null;
 };
 
@@ -53,12 +65,13 @@ type GroupedEntry = {
   requestId: string | null;
   date: string;
   type: "ALCO" | "PETRA";
-  submitter: { id: string; name: string };
+  submitter: UserMinimal;
   paymentStatus: "PAID" | "UNPAID";
   screenshotPath?: string;
   nickname?: string;
   starEntries: Array<{ stars: number; quantity: number; amount: number }>;
   totalAmount: number;
+  decidedBy?: UserMinimal | null;
 };
 
 type RequestRow = {
@@ -74,8 +87,8 @@ type RequestRow = {
   cardLastDigits: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   decisionNote: string | null;
-  submitter: { id: string; name: string };
-  decidedBy: { id: string; name: string } | null;
+  submitter: UserMinimal;
+  decidedBy: UserMinimal | null;
 };
 
 function StatusBadge({ status }: { status: RequestRow["status"] }) {
@@ -124,6 +137,7 @@ export function EntriesClient() {
 
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [myRequests, setMyRequests] = useState<RequestRow[]>([]);
+  const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,22 +162,33 @@ export function EntriesClient() {
     setLoading(true);
     setError(null);
     try {
-      const [entriesRes, requestsRes, pricesRes] = await Promise.all([
+      const [entriesRes, requestsRes, pricesRes, rolesRes] = await Promise.all([
         fetch("/api/entries", { cache: "no-store" }),
         fetch("/api/requests", { cache: "no-store" }),
         fetch("/api/admin/pricing", { cache: "no-store" }),
+        fetch("/api/admin/roles", { cache: "no-store" }),
       ]);
-      const entriesJson = (await entriesRes.json()) as { ok: boolean; data?: { entries: EntryRow[] } };
-      const requestsJson = (await requestsRes.json()) as { ok: boolean; data?: { requests: RequestRow[] } };
-      const pricesJson = (await pricesRes.json()) as { ok: boolean; data?: { prices: PricingItem[] } };
+      const entriesJson = (await entriesRes.json()) as { ok: boolean; data?: { entries: EntryRow[] }; error?: { message: string } };
+      const requestsJson = (await requestsRes.json()) as { ok: boolean; data?: { requests: RequestRow[] }; error?: { message: string } };
+      const pricesJson = (await pricesRes.json()) as { ok: boolean; data?: { prices: PricingItem[] }; error?: { message: string } };
+      const rolesJson = (await rolesRes.json()) as { ok: boolean; data?: { roles: RoleDef[] }; error?: { message: string } };
       
-      if (!entriesJson.ok || !entriesJson.data) throw new Error("Failed to load entries");
-      if (!requestsJson.ok || !requestsJson.data) throw new Error("Failed to load requests");
+      if (!entriesJson.ok || !entriesJson.data) throw new Error(entriesJson.error?.message || "Failed to load entries");
+      if (!requestsJson.ok || !requestsJson.data) throw new Error(requestsJson.error?.message || "Failed to load requests");
       
       setEntries(entriesJson.data.entries);
       setMyRequests(requestsJson.data.requests);
+      
       if (pricesJson.ok && pricesJson.data) {
         setPrices(pricesJson.data.prices);
+      } else {
+        console.warn("Pricing could not be loaded, using UI defaults");
+      }
+      
+      if (rolesJson.ok && rolesJson.data) {
+        setRoleDefs(rolesJson.data.roles);
+      } else {
+        console.warn("Role definitions could not be loaded");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -176,6 +201,11 @@ export function EntriesClient() {
     void load();
   }, []);
 
+  const getPrice = (stars: number) => {
+    const p = prices.find(x => x.type === reqType && x.stars === stars);
+    return p?.price ?? (stars * 50);
+  };
+
   const unpaidAmount = useMemo(() => {
     return entries.filter(e => e.paymentStatus === 'UNPAID').reduce((sum, e) => sum + Number(e.amount), 0).toFixed(2);
   }, [entries]);
@@ -187,12 +217,10 @@ export function EntriesClient() {
   const estimatedPrice = useMemo(() => {
     let total = 0;
     [1, 2, 3].forEach((stars) => {
-      const p = prices.find(x => x.type === reqType && x.stars === stars);
-      const qty = reqQuantities[`stars${stars}` as keyof typeof reqQuantities];
-      total += (p?.price ?? (stars * 50)) * qty;
+      total += getPrice(stars) * reqQuantities[`stars${stars}` as keyof typeof reqQuantities];
     });
     return total;
-  }, [prices, reqType, reqQuantities]);
+  }, [prices, reqType, reqQuantities, getPrice]);
 
   const totalQuantity = reqQuantities.stars1 + reqQuantities.stars2 + reqQuantities.stars3;
 
@@ -228,6 +256,10 @@ export function EntriesClient() {
       // Update payment status - if any entry is unpaid, the group is unpaid
       if (entry.paymentStatus === 'UNPAID') {
         group.paymentStatus = 'UNPAID';
+      }
+
+      if (entry.entryRequest?.decidedBy) {
+        group.decidedBy = entry.entryRequest.decidedBy;
       }
     });
     
@@ -530,7 +562,7 @@ export function EntriesClient() {
                                 }}
                               />
                               <div className="text-center mt-1 sm:mt-2 text-[8px] sm:text-[10px] text-zinc-500 font-bold">
-                                {stars === 1 ? '50₴' : stars === 2 ? '100₴' : '150₴'}/шт
+                                {loading ? "..." : `${getPrice(stars)}₴/шт`}
                               </div>
                             </div>
                           );
@@ -620,88 +652,132 @@ export function EntriesClient() {
       )}
 
       {/* --- Main Content Tabs --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 gap-12">
         {/* --- Всі заявки --- */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <div className="h-1 w-6 bg-amber-500 rounded-full" />
-            <h2 className="text-lg font-black text-white uppercase tracking-wider">Всі заявки</h2>
+            <div className="h-1.5 w-10 bg-amber-500 rounded-full" />
+            <h2 className="text-2xl font-black text-white uppercase tracking-wider">Усі заявки</h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {myRequests.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.01] p-10 text-center">
-                <p className="text-zinc-600 font-medium text-sm">Заявок ще немає</p>
+              <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.01] p-16 text-center">
+                <p className="text-zinc-600 font-bold text-lg">Заявок ще немає</p>
               </div>
             ) : (
               myRequests.map((r, idx) => (
                 <motion.div
                   key={r.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="group relative rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md hover:bg-white/[0.05] transition-all"
+                  className="group relative rounded-[2.5rem] border border-white/10 bg-[#0a0d10]/60 p-6 sm:p-8 backdrop-blur-xl hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300 shadow-xl"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${r.type === 'ALCO' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
-                        {r.type === 'ALCO' ? <Beer className="w-5 h-5" /> : <Sprout className="w-5 h-5" />}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                    <div className="flex items-start sm:items-center gap-6">
+                      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] border-2 shadow-2xl transition-transform group-hover:scale-105 duration-500 ${r.type === 'ALCO' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
+                        {r.type === 'ALCO' ? <Beer className="w-8 h-8" /> : <Sprout className="w-8 h-8" />}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-sm leading-none">{r.nickname}</span>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <h4 className="text-xl font-black text-white leading-none tracking-tight">{r.nickname}</h4>
                           <StatusBadge status={r.status} />
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500 mt-1">
-                          <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
+                          <div className="flex items-center gap-2">
                             {r.stars1Qty > 0 && (
-                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <span className="text-zinc-300">{r.stars1Qty}шт</span>
+                              <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-xl border border-white/5">
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300 font-bold">{r.stars1Qty}шт</span>
                               </span>
                             )}
                             {r.stars2Qty > 0 && (
-                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <span className="text-zinc-300">{r.stars2Qty}шт</span>
+                              <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-xl border border-white/5">
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300 font-bold">{r.stars2Qty}шт</span>
                               </span>
                             )}
                             {r.stars3Qty > 0 && (
-                              <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5">
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                <span className="text-zinc-300">{r.stars3Qty}шт</span>
+                              <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-xl border border-white/5">
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <span className="text-zinc-300 font-bold">{r.stars3Qty}шт</span>
                               </span>
                             )}
                           </div>
-                          <span>•</span>
-                          <span className="font-bold text-zinc-300">{Number(r.totalAmount).toFixed(2)} ₴</span>
+                          <div className="h-1 w-1 rounded-full bg-zinc-800" />
+                          <span className="font-black text-white text-lg">{Number(r.totalAmount).toFixed(2)} ₴</span>
                           {r.cardLastDigits && (
                             <>
-                              <span>•</span>
-                              <span className="font-mono text-zinc-400">💳 *{r.cardLastDigits}</span>
+                              <div className="h-1 w-1 rounded-full bg-zinc-800" />
+                              <span className="font-mono text-zinc-400 bg-black/40 px-3 py-1 rounded-lg">💳 *{r.cardLastDigits}</span>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-[9px] text-zinc-600 uppercase font-black text-right hidden sm:block">
-                        {r.submitter.name}
+
+                    <div className="flex flex-wrap items-center gap-6 lg:border-l lg:border-white/5 lg:pl-8">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                            <User className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest leading-none mb-1">Подав</p>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-white text-sm">{r.submitter.name}</span>
+                              <MultiRoleBadges 
+                                primaryRole={r.submitter.role} 
+                                additionalRoles={r.submitter.additionalRoles} 
+                                roleDefs={roleDefs}
+                                size="sm"
+                              />
+                            </div>
+                            <p className="text-[10px] font-mono text-zinc-500 mt-0.5 opacity-60">@{r.submitter.discordId}</p>
+                          </div>
+                        </div>
+
+                        {r.decidedBy && (
+                          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                            <div className={`h-10 w-10 flex items-center justify-center rounded-xl border ${r.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                              <Shield className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest leading-none mb-1">Обробив</p>
+                              <div className="flex items-center gap-3">
+                                <span className="font-bold text-white text-sm">{r.decidedBy.name}</span>
+                                <MultiRoleBadges 
+                                  primaryRole={r.decidedBy.role} 
+                                  additionalRoles={r.decidedBy.additionalRoles} 
+                                  roleDefs={roleDefs}
+                                  size="sm"
+                                />
+                              </div>
+                              <p className="text-[10px] font-mono text-zinc-500 mt-0.5 opacity-60">@{r.decidedBy.discordId}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
+
                       <button
                         onClick={() => setScreenshotModal(r.screenshotPath)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white transition-all"
+                        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-white/10 transition-all shadow-xl"
                       >
-                        <ImageIcon className="w-3.5 h-3.5" />
+                        <ImageIcon className="w-6 h-6" />
                       </button>
                     </div>
                   </div>
                   {r.decisionNote && (
-                    <div className="mt-4 p-3 rounded-xl bg-red-500/5 border border-red-500/10 text-[10px] text-red-400">
-                      <strong>Відмова:</strong> {r.decisionNote}
+                    <div className="mt-6 flex items-start gap-3 p-4 rounded-[1.5rem] bg-red-500/5 border border-red-500/10 text-sm text-red-400">
+                      <MessageSquare className="w-5 h-5 shrink-0 mt-0.5 opacity-60" />
+                      <div>
+                        <strong className="block text-[10px] uppercase tracking-widest mb-1">Причина відмови:</strong> 
+                        {r.decisionNote}
+                      </div>
                     </div>
                   )}
                 </motion.div>
@@ -711,79 +787,112 @@ export function EntriesClient() {
         </div>
 
         {/* --- Історія записів --- */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-1 w-6 bg-emerald-500 rounded-full" />
-              <h2 className="text-lg font-black text-white uppercase tracking-wider">Історія виплат</h2>
+              <div className="h-1.5 w-10 bg-emerald-500 rounded-full" />
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider">Історія виплат</h2>
             </div>
             <button 
               onClick={load}
-              className={`p-1.5 rounded-lg bg-white/5 text-zinc-500 hover:text-white transition-all ${loading ? 'animate-spin' : ''}`}
+              className={`p-2 rounded-xl bg-white/5 text-zinc-500 hover:text-white border border-white/10 transition-all ${loading ? 'animate-spin' : ''}`}
             >
-              <RefreshCcw className="w-3.5 h-3.5" />
+              <RefreshCcw className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {groupedEntries.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.01] p-10 text-center">
-                <p className="text-zinc-600 font-medium text-sm">Записів ще немає</p>
+              <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.01] p-16 text-center">
+                <p className="text-zinc-600 font-bold text-lg">Записів ще немає</p>
               </div>
             ) : (
               groupedEntries.map((g, idx) => (
                 <motion.div
                   key={g.requestId || `group-${idx}`}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="relative rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-4 flex items-center justify-between group overflow-hidden"
+                  className="relative rounded-[2.5rem] border border-white/5 bg-[#0a0d10]/60 p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between group overflow-hidden shadow-2xl hover:bg-white/[0.04] transition-all duration-300"
                 >
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${g.paymentStatus === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <div className={`absolute left-0 top-0 bottom-0 w-2 ${g.paymentStatus === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'} shadow-[4px_0_20px_rgba(0,0,0,0.5)]`} />
                   
-                  <div className="flex items-center gap-3">
-                    <div className="text-center min-w-[40px]">
-                      <div className="text-[9px] font-black text-zinc-600 uppercase leading-none">{new Date(g.date).toLocaleDateString('uk-UA', { month: 'short' })}</div>
-                      <div className="text-lg font-black text-white leading-tight">{new Date(g.date).getDate()}</div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 flex-1">
+                    <div className="flex items-center gap-6 min-w-[120px]">
+                      <div className="text-center">
+                        <div className="text-[10px] font-black text-zinc-600 uppercase leading-none tracking-[0.2em] mb-1">{new Date(g.date).toLocaleDateString('uk-UA', { month: 'long' })}</div>
+                        <div className="text-4xl font-black text-white leading-tight tracking-tighter">{new Date(g.date).getDate()}</div>
+                        <div className="text-[10px] font-bold text-zinc-500 opacity-60">{new Date(g.date).getFullYear()}</div>
+                      </div>
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl border ${g.type === 'ALCO' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
+                        {g.type === 'ALCO' ? <Beer className="w-6 h-6" /> : <Sprout className="w-6 h-6" />}
+                      </div>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{g.submitter.name}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full backdrop-blur-md border transition-all ${
+
+                    <div className="space-y-4 flex-1">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex flex-col">
+                          <span className="text-lg font-black text-white">{g.submitter.name}</span>
+                          <span className="text-[10px] font-mono text-zinc-600">@{g.submitter.discordId}</span>
+                        </div>
+                        <MultiRoleBadges 
+                          primaryRole={g.submitter.role} 
+                          additionalRoles={g.submitter.additionalRoles} 
+                          roleDefs={roleDefs}
+                          size="sm"
+                        />
+                        <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border shadow-lg ${
                           g.paymentStatus === 'PAID' 
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
                             : 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse'
                         }`}>
-                          {g.paymentStatus === 'PAID' ? 'ОПЛАЧЕНО' : 'В ЧЕРЗІ'}
+                          {g.paymentStatus === 'PAID' ? 'ОПЛАЧЕНО' : 'ОЧІКУЄ ВИПЛАТИ'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5 flex-wrap">
-                        <span>{g.type === 'ALCO' ? '🍺 Алко' : '💎 Петра'}</span>
-                        <span>•</span>
+                      <div className="flex flex-wrap items-center gap-4 text-xs">
                         {g.starEntries.map((se, i) => (
-                          <span key={i} className="inline-flex items-center gap-0.5">
-                            {i > 0 && <span className="text-zinc-700 mx-0.5">|</span>}
-                            <span className="text-amber-400">{se.stars}⭐</span>
-                            <span className="text-zinc-400">×{se.quantity}</span>
-                          </span>
+                          <div key={i} className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+                            <span className="flex items-center gap-0.5">
+                              {Array.from({ length: se.stars }).map((_, si) => (
+                                <Star key={si} className="w-3 h-3 text-amber-500 fill-amber-500" />
+                              ))}
+                            </span>
+                            <span className="text-zinc-500 font-bold">×</span>
+                            <span className="text-white font-black">{se.quantity}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {g.screenshotPath && (
-                      <button
-                        onClick={() => setScreenshotModal(g.screenshotPath!)}
-                        className="p-2 rounded-lg bg-white/5 text-zinc-500 hover:text-white hover:bg-white/10 transition-all"
-                        title="Переглянути скріншот"
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                      </button>
+                  <div className="mt-8 lg:mt-0 flex items-center justify-between lg:justify-end gap-10 lg:border-l lg:border-white/5 lg:pl-10">
+                    {g.decidedBy && (
+                      <div className="flex items-center gap-4">
+                         <div className="text-right hidden sm:block">
+                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest leading-none mb-1">Схвалено</p>
+                            <p className="font-bold text-white text-sm">{g.decidedBy.name}</p>
+                            <p className="text-[10px] font-mono text-zinc-500 opacity-50">@{g.decidedBy.discordId}</p>
+                         </div>
+                         <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <Shield className="w-5 h-5" />
+                         </div>
+                      </div>
                     )}
-                    <div className="text-right">
-                      <div className="text-base font-black text-white leading-none">{g.totalAmount.toFixed(2)}</div>
-                      <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">Гривень</div>
+
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <div className="text-3xl font-black text-white leading-none tracking-tighter">{g.totalAmount.toFixed(2)}</div>
+                        <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1">Гривень</div>
+                      </div>
+                      {g.screenshotPath && (
+                        <button
+                          onClick={() => setScreenshotModal(g.screenshotPath!)}
+                          className="p-4 rounded-2xl bg-white/5 text-zinc-500 hover:text-white hover:bg-white/10 border border-white/10 transition-all shadow-xl"
+                          title="Переглянути скріншот"
+                        >
+                          <ImageIcon className="w-6 h-6" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>

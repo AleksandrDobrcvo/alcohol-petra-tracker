@@ -6,22 +6,25 @@ import { jsonError, jsonOk } from "@/src/server/http";
 
 export async function GET() {
   try {
-    const prices = await prisma.pricing.findMany();
+    const dbPrices = await prisma.pricing.findMany();
     
-    // If empty, return defaults
-    if (prices.length === 0) {
-      const defaults = [
-        { type: "ALCO", stars: 1, price: 50 },
-        { type: "ALCO", stars: 2, price: 100 },
-        { type: "ALCO", stars: 3, price: 150 },
-        { type: "PETRA", stars: 1, price: 50 },
-        { type: "PETRA", stars: 2, price: 100 },
-        { type: "PETRA", stars: 3, price: 150 },
-      ];
-      return jsonOk({ prices: defaults });
+    const types = ["ALCO", "PETRA"] as const;
+    const stars = [1, 2, 3] as const;
+    
+    const finalPrices = [];
+    
+    for (const type of types) {
+      for (const s of stars) {
+        const found = dbPrices.find(p => p.type === type && p.stars === s);
+        if (found) {
+          finalPrices.push(found);
+        } else {
+          finalPrices.push({ type, stars: s, price: s * 50 });
+        }
+      }
     }
 
-    return jsonOk({ prices });
+    return jsonOk({ prices: finalPrices });
   } catch (e) {
     return jsonError(e);
   }

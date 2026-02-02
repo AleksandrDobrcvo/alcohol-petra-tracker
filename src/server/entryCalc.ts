@@ -8,7 +8,6 @@ export async function calcQuantityAndAmount(type: EntryType, stars: number, quan
   const safeStars = Math.max(1, Math.min(3, Math.trunc(stars)));
   const safeQuantity = Math.max(1, Math.trunc(quantity));
   
-  // Fetch price from DB
   const pricing = await prisma.pricing.findUnique({
     where: {
       type_stars: {
@@ -18,7 +17,8 @@ export async function calcQuantityAndAmount(type: EntryType, stars: number, quan
     }
   });
 
-  const unitPrice = pricing?.price ?? (safeStars * 50); // fallback if not found
+  // If not found in DB, use default logic
+  const unitPrice = pricing?.price ?? (safeStars * 50);
   const amount = Math.round(unitPrice * safeQuantity * 100) / 100;
   
   return { quantity: safeQuantity, amount };

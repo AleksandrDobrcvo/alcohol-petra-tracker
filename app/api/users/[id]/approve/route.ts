@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { writeAuditLog } from "@/src/server/audit";
+import { canManageUsers } from "@/src/server/rbac";
+import { ApiError } from "@/src/server/errors";
 
 const schema = z.object({
   isApproved: z.boolean(),
@@ -12,7 +13,12 @@ const schema = z.object({
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
+    // Check if user has permission to manage users
+    const hasPermission = await canManageUsers(ctx);
+    if (!hasPermission) {
+      throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to approve users");
+    }
 
     const id = ctx2.params.id;
     const body = schema.parse(await req.json());

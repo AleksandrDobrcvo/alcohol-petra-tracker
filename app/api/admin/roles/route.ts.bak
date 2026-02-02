@@ -12,17 +12,17 @@ const roleSchema = z.object({
   textColor: z.string().default("text-sky-400"),
   power: z.number().int().min(0).max(100).default(0),
   desc: z.string().optional(),
-  permissions: z.any().optional() // Added permissions field
+  permissions: z.any().optional() // Added permissions field,
 });
 
 // Default roles to seed if database is empty
 const DEFAULT_ROLES = [
-  { name: "LEADER", label: "Лідер", emoji: "👑", color: "from-amber-500 to-yellow-500", textColor: "text-amber-400", power: 100, permissions: { "manage_users": true, "manage_roles": true, "manage_requests": true, "delete_entries": true, "ban_users": true, "moderate_alco": true, "moderate_petra": true, "view_reports": true, "manage_pricing": true, "view_audit_log": true } },
-  { name: "DEPUTY", label: "Заступник", emoji: "⭐", color: "from-amber-400 to-orange-400", textColor: "text-orange-400", power: 80, permissions: { "manage_users": true, "manage_requests": true, "delete_entries": true, "ban_users": true, "moderate_alco": true, "moderate_petra": true, "view_reports": true, "manage_pricing": true, "view_audit_log": true } },
-  { name: "SENIOR", label: "Старший", emoji: "🛡️", color: "from-amber-500/50 to-amber-600/50", textColor: "text-amber-300", power: 60, permissions: { "manage_requests": true, "delete_entries": true, "moderate_alco": true, "moderate_petra": true, "view_reports": true, "view_audit_log": true } },
-  { name: "ALCO_STAFF", label: "Алко-персонал", emoji: "🍺", color: "from-emerald-500/50 to-emerald-600/50", textColor: "text-emerald-400", power: 40, permissions: { "moderate_alco": true, "manage_requests": true } },
-  { name: "PETRA_STAFF", label: "Петра-персонал", emoji: "🌿", color: "from-emerald-500/50 to-teal-600/50", textColor: "text-teal-400", power: 40, permissions: { "moderate_petra": true, "manage_requests": true } },
-  { name: "MEMBER", label: "Учасник", emoji: "✅", color: "from-sky-500/50 to-sky-600/50", textColor: "text-sky-400", power: 20, permissions: {} },
+  { name: "LEADER", label: "Лідер", emoji: "👑", color: "from-amber-500 to-yellow-500", textColor: "text-amber-400", power: 100 },
+  { name: "DEPUTY", label: "Заступник", emoji: "⭐", color: "from-amber-400 to-orange-400", textColor: "text-orange-400", power: 80 },
+  { name: "SENIOR", label: "Старший", emoji: "🛡️", color: "from-amber-500/50 to-amber-600/50", textColor: "text-amber-300", power: 60 },
+  { name: "ALCO_STAFF", label: "Алко-персонал", emoji: "🍺", color: "from-emerald-500/50 to-emerald-600/50", textColor: "text-emerald-400", power: 40 },
+  { name: "PETRA_STAFF", label: "Петра-персонал", emoji: "🌿", color: "from-emerald-500/50 to-teal-600/50", textColor: "text-teal-400", power: 40 },
+  { name: "MEMBER", label: "Учасник", emoji: "✅", color: "from-sky-500/50 to-sky-600/50", textColor: "text-sky-400", power: 20 },
 ];
 
 export async function GET() {
@@ -33,12 +33,6 @@ export async function GET() {
     let roles = await (prisma as any).roleDefinition.findMany({
       orderBy: { power: "desc" },
     });
-
-    // Transform roles to parse permissions from JSON string to object
-    roles = roles.map((role: any) => ({
-      ...role,
-      permissions: role.permissions ? (typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions) : {}
-    }));
 
     // Auto-seed default roles if none exist
     if (roles.length === 0) {
@@ -52,12 +46,6 @@ export async function GET() {
       roles = await (prisma as any).roleDefinition.findMany({
         orderBy: { power: "desc" },
       });
-
-      // Transform the seeded roles as well
-      roles = roles.map((role: any) => ({
-        ...role,
-        permissions: role.permissions ? (typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions) : {}
-      }));
     }
 
     return jsonOk({ roles });

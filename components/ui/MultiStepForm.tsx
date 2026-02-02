@@ -26,6 +26,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [prices, setPrices] = useState<any[]>([]);
+  const [loadingPrices, setLoadingPrices] = useState(true);
   const [formData, setFormData] = useState<FormData>({
     nickname: "",
     cardLastDigits: "",
@@ -35,12 +36,14 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
   });
 
   useEffect(() => {
-    fetch("/api/admin/pricing")
+    setLoadingPrices(true);
+    fetch("/api/admin/pricing", { cache: "no-store" })
       .then(res => res.json())
       .then(json => {
         if (json.ok) setPrices(json.data.prices);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setLoadingPrices(false));
   }, []);
 
   const getPrice = (stars: number) => {
@@ -272,7 +275,7 @@ export default function MultiStepForm({ onSubmit, onClose }: MultiStepFormProps)
                       ))}
                     </span>
                     <span className="text-[10px] font-black text-amber-500/60 uppercase tracking-widest mt-1">
-                      Ціна: {getPrice(stars)}₴ / шт
+                      Ціна: {loadingPrices ? "..." : `${getPrice(stars)}₴ / шт`}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">

@@ -9,16 +9,17 @@ datasource db {
 }
 
 model RoleDefinition {
-  id        String   @id @default(uuid())
-  name      String   @unique // internal name like LEADER
-  label     String   // display name like Лідер
-  emoji     String   @default("👤")
-  color     String   @default("from-sky-500/50 to-sky-600/50")
-  textColor String   @default("text-sky-400")
-  power     Int      @default(0)
-  desc      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String   @unique
+  label       String
+  emoji       String   @default("👤")
+  color       String   @default("from-sky-500/50 to-sky-600/50")
+  textColor   String   @default("text-sky-400")
+  power       Int      @default(0)
+  desc        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  permissions Json?    @default("{}")
 }
 
 model User {
@@ -26,7 +27,6 @@ model User {
   discordId         String            @unique
   name              String
   role              String            @default("MEMBER")
-  additionalRoles   String[]          @default([])
   cardNumber        String?
   isBlocked         Boolean           @default(false)
   banReason         String?
@@ -36,13 +36,14 @@ model User {
   moderatesPetra    Boolean           @default(false)
   isFrozen          Boolean           @default(false)
   frozenReason      String?
-  lastSeenAt        DateTime?         // Track online status
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  additionalRoles   String[]          @default([])
+  lastSeenAt        DateTime?
   auditLogs         AuditLog[]        @relation("AuditActor")
-  updatedEntries    Entry[]           @relation("EntryUpdater")
   createdEntries    Entry[]           @relation("EntryCreator")
   submittedEntries  Entry[]           @relation("EntrySubmitter")
+  updatedEntries    Entry[]           @relation("EntryUpdater")
   decidedRequests   EntryRequest[]    @relation("RequestDecider")
   submittedRequests EntryRequest[]    @relation("RequestSubmitter")
   publicViewTokens  PublicViewToken[] @relation("PublicTokenCreator")
@@ -63,10 +64,10 @@ model Entry {
   requestId     String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  updatedBy     User?         @relation("EntryUpdater", fields: [updatedById], references: [id])
   createdBy     User          @relation("EntryCreator", fields: [createdById], references: [id])
+  entryRequest  EntryRequest? @relation("RequestEntries", fields: [requestId], references: [id])
   submitter     User          @relation("EntrySubmitter", fields: [submitterId], references: [id])
-  entryRequest  EntryRequest? @relation("RequestEntries", fields: [requestId], references: [id], onDelete: SetNull)
+  updatedBy     User?         @relation("EntryUpdater", fields: [updatedById], references: [id])
 
   @@index([date])
   @@index([submitterId])
@@ -93,9 +94,9 @@ model EntryRequest {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   cardLastDigits String?
+  entries        Entry[]   @relation("RequestEntries")
   decidedBy      User?     @relation("RequestDecider", fields: [decidedById], references: [id])
   submitter      User      @relation("RequestSubmitter", fields: [submitterId], references: [id])
-  entries        Entry[]   @relation("RequestEntries")
 
   @@index([status])
   @@index([type])

@@ -15,7 +15,9 @@
     "prisma:studio": "prisma studio",
     "clean": "if exist .next rmdir /s /q .next && if exist .cache rmdir /s /q .cache",
     "clean:full": "npm run clean && if exist node_modules rmdir /s /q node_modules && npm install",
-    "dev:fast:clean": "npm run clean && npm run dev:fast"
+    "dev:fast:clean": "npm run clean && npm run dev:fast",
+    "vercel-deploy": "vercel --prod",
+    "vercel-link": "vercel link"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",

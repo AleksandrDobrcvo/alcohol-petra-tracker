@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@/src/server/prisma";
 import { requireSession } from "@/src/server/auth";
-import { assertRoleOrThrow } from "@/src/server/rbac";
 import { jsonError, jsonOk } from "@/src/server/http";
 import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
+import { canManageRequests, canDeleteEntries } from "@/src/server/rbac";
+import { ApiError } from "@/src/server/errors";
 
 const entryPatchSchema = z
   .object({
@@ -18,7 +19,12 @@ const entryPatchSchema = z
 export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
+    // Check if user has permission to manage requests (for updating entries)
+    const hasPermission = await canManageRequests(ctx);
+    if (!hasPermission) {
+      throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to update entries");
+    }
 
     const id = ctx2.params.id;
     const body = entryPatchSchema.parse(await req.json());
@@ -79,7 +85,16 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
 export async function DELETE(req: Request, ctx2: { params: { id: string } }) {
   try {
     const ctx = await requireSession();
-    assertRoleOrThrow(ctx, ["LEADER", "DEPUTY", "SENIOR"]);
+    
+    // Check if user has permission to delete entries specifically
+    const hasPermission = await canDeleteEntries(ctx);
+    if (!hasPermission) {
+      // Fallback to general manage requests permission
+      const hasGeneralPermission = await canManageRequests(ctx);
+      if (!hasGeneralPermission) {
+        throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to delete entries");
+      }
+    }
 
     const id = ctx2.params.id;
     const existing = await prisma.entry.findUnique({ where: { id } });
@@ -110,4 +125,3 @@ export async function DELETE(req: Request, ctx2: { params: { id: string } }) {
     return jsonError(e);
   }
 }
-

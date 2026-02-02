@@ -5,6 +5,7 @@ import { jsonError, jsonOk } from "@/src/server/http";
 import { ApiError } from "@/src/server/errors";
 import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
+import { canManageRequests } from "@/src/server/rbac";
 
 const createSchema = z.object({
   nickname: z.string().trim().min(2).max(32),
@@ -23,9 +24,10 @@ const listSchema = z.object({
   type: z.enum(["ALCO", "PETRA"]).optional(),
 });
 
-function canSeeAll(ctx: Awaited<ReturnType<typeof requireSession>>) {
-  // User requested that everyone can see all requests and statuses
-  return true;
+async function canSeeAll(ctx: Awaited<ReturnType<typeof requireSession>>) {
+  // Check if user has permission to manage requests
+  const hasPermission = await canManageRequests(ctx);
+  return hasPermission;
 }
 
 export async function GET(req: Request) {
@@ -51,8 +53,8 @@ export async function GET(req: Request) {
       where,
       orderBy: [{ createdAt: "desc" }],
       include: {
-        submitter: { select: { id: true, name: true } },
-        decidedBy: { select: { id: true, name: true } },
+        submitter: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
+        decidedBy: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
       },
     });
 
@@ -135,8 +137,8 @@ export async function POST(req: Request) {
         status: "PENDING",
       },
       include: {
-        submitter: { select: { id: true, name: true } },
-        decidedBy: { select: { id: true, name: true } },
+        submitter: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
+        decidedBy: { select: { id: true, name: true, role: true, discordId: true, additionalRoles: true } },
       },
     });
 

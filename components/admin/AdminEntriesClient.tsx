@@ -29,27 +29,22 @@ import {
   Shield,
   Crown,
   History,
-  FileText
+  FileText,
+  UserCheck,
+  ShieldCheck,
+  Hash,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { MultiRoleBadges, RoleDef } from "@/components/ui/RoleBadge";
 
-// Role badge helper component
-function RoleBadge({ role }: { role: string }) {
-  const config: Record<string, { label: string; color: string }> = {
-    LEADER: { label: '👑 Лідер', color: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black' },
-    DEPUTY: { label: '⭐ Заступник', color: 'bg-gradient-to-r from-amber-400 to-orange-400 text-black' },
-    SENIOR: { label: '🛡️ Старший', color: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
-    ALCO_STAFF: { label: '🍺 Алко', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
-    PETRA_STAFF: { label: '🌿 Петра', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
-    MEMBER: { label: '✅ Учасник', color: 'bg-sky-500/20 text-sky-300 border border-sky-500/30' },
-  };
-  const c = config[role] || { label: role, color: 'bg-zinc-500/20 text-zinc-300' };
-  return (
-    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${c.color}`}>
-      {c.label}
-    </span>
-  );
-}
+type UserMinimal = {
+  id: string;
+  name: string;
+  role: string;
+  discordId: string;
+  additionalRoles?: string[];
+};
 
 type PricingItem = {
   type: "ALCO" | "PETRA";
@@ -68,9 +63,9 @@ type Entry = {
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
-  submitter: { id: string; name: string; role: string };
-  createdBy: { id: string; name: string; role: string };
-  updatedBy?: { id: string; name: string; role: string } | null;
+  submitter: UserMinimal;
+  createdBy: UserMinimal;
+  updatedBy?: UserMinimal | null;
   entryRequest?: {
     id: string;
     nickname: string;
@@ -80,13 +75,14 @@ type Entry = {
     decisionNote?: string;
     cardLastDigits?: string;
     createdAt: string;
-    decidedBy?: { id: string; name: string; role: string } | null;
+    decidedBy?: UserMinimal | null;
   } | null;
 };
 
 export function AdminEntriesClient() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [prices, setPrices] = useState<PricingItem[]>([]);
+  const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -114,15 +110,17 @@ export function AdminEntriesClient() {
   async function load() {
     setLoading(true);
     try {
-      const [entriesRes, pricesRes, usersRes] = await Promise.all([
+      const [entriesRes, pricesRes, usersRes, rolesRes] = await Promise.all([
         fetch("/api/entries", { cache: "no-store" }),
         fetch("/api/admin/pricing", { cache: "no-store" }),
-        fetch("/api/users", { cache: "no-store" })
+        fetch("/api/users", { cache: "no-store" }),
+        fetch("/api/admin/roles", { cache: "no-store" })
       ]);
       
       const eJson = await entriesRes.json();
       const pJson = await pricesRes.json();
       const uJson = await usersRes.json();
+      const rJson = await rolesRes.json();
       
       if (!eJson.ok) throw new Error(eJson.error?.message || "Failed to load entries");
       if (!pJson.ok) throw new Error("Failed to load prices");
@@ -131,6 +129,7 @@ export function AdminEntriesClient() {
       setEntries(eJson.data.entries);
       setPrices(pJson.data.prices);
       setUsers(uJson.data.users);
+      if (rJson.ok) setRoleDefs(rJson.data.roles);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -350,106 +349,169 @@ export function AdminEntriesClient() {
               <motion.div
                 key={e.id}
                 layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, delay: idx * 0.02 }}
-                className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-300 ${
+                transition={{ duration: 0.3, delay: idx * 0.02 }}
+                className={`group relative overflow-hidden rounded-[2.5rem] border transition-all duration-500 ${
                   editingId === e.id 
-                    ? 'border-amber-500/50 bg-amber-500/5 shadow-2xl shadow-amber-500/10' 
-                    : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
+                    ? 'border-amber-500 bg-amber-500/5 shadow-2xl shadow-amber-500/20' 
+                    : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
                 }`}
               >
-                <div className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 transition-transform group-hover:scale-110 duration-500 ${
-                        e.type === 'ALCO' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                      }`}>
-                        {e.type === 'ALCO' ? <Beer className="w-8 h-8" /> : <Sprout className="w-8 h-8" />}
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-lg font-black text-white tracking-tight">{e.submitter.name}</h4>
-                          <div className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter border ${
-                            e.type === 'ALCO' ? 'bg-amber-500/20 border-amber-500/30 text-amber-400' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                          }`}>
-                            {e.type}
+                <div className="p-8 sm:p-10">
+                  <div className="flex flex-col lg:flex-row gap-8">
+                    {/* Primary Info */}
+                    <div className="flex-1 space-y-6">
+                      <div className="flex items-center gap-6">
+                        <div className={`flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-[1.5rem] border-2 transition-transform group-hover:scale-110 duration-500 shadow-2xl ${
+                          e.type === 'ALCO' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                        }`}>
+                          {e.type === 'ALCO' ? <Beer className="w-8 h-8 sm:w-10 sm:h-10" /> : <Sprout className="w-8 h-8 sm:w-10 sm:h-10" />}
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">{e.submitter.name}</h4>
+                            <span className="text-[10px] font-mono text-zinc-500 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">@{e.submitter.discordId}</span>
+                            <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest border ${
+                              e.type === 'ALCO' ? 'bg-amber-500/20 border-amber-500/30 text-amber-400' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                            }`}>
+                              {e.type}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-zinc-500">
+                            <MultiRoleBadges 
+                              primaryRole={e.submitter.role} 
+                              additionalRoles={e.submitter.additionalRoles}
+                              roleDefs={roleDefs}
+                              size="sm"
+                            />
+                            <div className="h-4 w-px bg-white/10 mx-1" />
+                            <div className="flex items-center gap-1.5 text-white/70">
+                              <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>{new Date(e.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-zinc-600">
+                              <Hash className="w-3.5 h-3.5" />
+                              <span className="font-mono uppercase">{e.id.slice(0, 8)}</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-xs font-bold text-zinc-500">
-                          <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-lg">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            <span className="text-white">{e.stars} зірок</span>
-                          </div>
-                          <span>•</span>
-                          <div className="flex items-center gap-1.5">
-                            <Plus className="w-3 h-3" />
-                            <span>{e.quantity} шт</span>
-                          </div>
-                          <span>•</span>
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3" />
-                            <span>{new Date(e.date).toLocaleDateString()}</span>
-                          </div>
+                      </div>
+
+                      {/* Resource Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Зірки</span>
+                          <span className="text-xl font-black text-white flex items-center gap-1">
+                            {e.stars} <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                          </span>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Кількість</span>
+                          <span className="text-xl font-black text-white">{e.quantity} шт</span>
+                        </div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center justify-center col-span-2">
+                          <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-widest mb-1">Сума до виплати</span>
+                          <span className="text-2xl font-black text-emerald-400 tracking-tighter">{e.amount.toFixed(0)} ₴</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-white tracking-tighter">
-                          {e.amount.toFixed(2)} <span className="text-sm font-bold text-zinc-500 ml-1">₴</span>
+                    {/* Meta & Actions */}
+                    <div className="flex flex-col justify-between gap-6 lg:min-w-[300px] border-l border-white/5 pl-0 lg:pl-8">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => togglePayment(e.id, e.paymentStatus)}
+                            className={`flex items-center gap-3 rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-[0.2em] transition-all shadow-xl ${
+                              e.paymentStatus === 'PAID' 
+                                ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:scale-[1.05] active:scale-95' 
+                                : 'bg-white/5 text-zinc-500 border border-white/10 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {e.paymentStatus === 'PAID' ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            {e.paymentStatus === 'PAID' ? 'Виплачено' : 'Очікує'}
+                          </button>
+                          
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setDetailEntry(e)}
+                              className="p-3 bg-white/5 text-zinc-500 hover:text-sky-400 hover:bg-sky-500/10 border border-white/5 rounded-xl transition-all"
+                              title="Всі деталі"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => deleteEntry(e.id)}
+                              className="p-3 bg-white/5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all"
+                              title="Видалити"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-0.5">Сума виплати</p>
+
+                        {/* Attribution */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3">
+                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                              <UserCheck className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Додав запис</p>
+                              <p className="text-sm font-bold text-white truncate">{e.createdBy.name}</p>
+                            </div>
+                            <MultiRoleBadges 
+                              primaryRole={e.createdBy.role} 
+                              additionalRoles={e.createdBy.additionalRoles}
+                              roleDefs={roleDefs}
+                              size="sm"
+                              maxVisible={1}
+                            />
+                          </div>
+
+                          {e.entryRequest?.decidedBy && (
+                            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3">
+                              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                                <ShieldCheck className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Схвалив заявку</p>
+                                <p className="text-sm font-bold text-white truncate">{e.entryRequest.decidedBy.name}</p>
+                              </div>
+                              <MultiRoleBadges 
+                                primaryRole={e.entryRequest.decidedBy.role} 
+                                additionalRoles={e.entryRequest.decidedBy.additionalRoles}
+                                roleDefs={roleDefs}
+                                size="sm"
+                                maxVisible={1}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="h-10 w-px bg-white/10 hidden md:block" />
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => togglePayment(e.id, e.paymentStatus)}
-                          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
-                            e.paymentStatus === 'PAID' 
-                              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-105' 
-                              : 'bg-white/5 text-zinc-500 border border-white/10 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          {e.paymentStatus === 'PAID' ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                          {e.paymentStatus === 'PAID' ? 'Виплачено' : 'Очікує'}
-                        </button>
-
-                        <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/5">
-                          <button 
-                            onClick={() => setDetailEntry(e)}
-                            className="p-2 text-zinc-500 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"
-                            title="Деталі"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (editingId === e.id) {
-                                setEditingId(null);
-                                setEditForm(null);
-                              } else {
-                                setEditingId(e.id);
-                                setEditForm({ stars: e.stars, type: e.type, quantity: e.quantity || 1, amount: e.amount });
-                              }
-                            }}
-                            className={`p-2 rounded-lg transition-all ${editingId === e.id ? 'bg-amber-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-white/10'}`}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => deleteEntry(e.id)}
-                            className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+                      <button 
+                        onClick={() => {
+                          if (editingId === e.id) {
+                            setEditingId(null);
+                            setEditForm(null);
+                          } else {
+                            setEditingId(e.id);
+                            setEditForm({ stars: e.stars, type: e.type, quantity: e.quantity || 1, amount: e.amount });
+                          }
+                        }}
+                        className={`w-full py-3 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${
+                          editingId === e.id 
+                            ? 'bg-amber-500 text-white shadow-lg' 
+                            : 'bg-white/5 text-zinc-500 border border-white/10 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        {editingId === e.id ? 'Закрити редактор' : 'Редагувати запис'}
+                      </button>
                     </div>
                   </div>
 
@@ -768,8 +830,14 @@ export function AdminEntriesClient() {
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Отримувач</p>
                         <p className="font-bold text-white">{detailEntry.submitter.name}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono">@{detailEntry.submitter.discordId}</p>
                       </div>
-                      <RoleBadge role={detailEntry.submitter.role} />
+                      <MultiRoleBadges 
+                        primaryRole={detailEntry.submitter.role} 
+                        additionalRoles={detailEntry.submitter.additionalRoles}
+                        roleDefs={roleDefs}
+                        size="sm"
+                      />
                     </div>
 
                     {/* Created By */}
@@ -780,9 +848,15 @@ export function AdminEntriesClient() {
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Створив</p>
                         <p className="font-bold text-white">{detailEntry.createdBy.name}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono">@{detailEntry.createdBy.discordId}</p>
                         <p className="text-[10px] text-zinc-600">{new Date(detailEntry.createdAt).toLocaleString()}</p>
                       </div>
-                      <RoleBadge role={detailEntry.createdBy.role} />
+                      <MultiRoleBadges 
+                        primaryRole={detailEntry.createdBy.role} 
+                        additionalRoles={detailEntry.createdBy.additionalRoles}
+                        roleDefs={roleDefs}
+                        size="sm"
+                      />
                     </div>
 
                     {/* Updated By */}
@@ -794,9 +868,15 @@ export function AdminEntriesClient() {
                         <div className="flex-1">
                           <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Останнє редагування</p>
                           <p className="font-bold text-white">{detailEntry.updatedBy.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">@{detailEntry.updatedBy.discordId}</p>
                           <p className="text-[10px] text-zinc-600">{new Date(detailEntry.updatedAt).toLocaleString()}</p>
                         </div>
-                        <RoleBadge role={detailEntry.updatedBy.role} />
+                        <MultiRoleBadges 
+                          primaryRole={detailEntry.updatedBy.role} 
+                          additionalRoles={detailEntry.updatedBy.additionalRoles}
+                          roleDefs={roleDefs}
+                          size="sm"
+                        />
                       </div>
                     )}
 
@@ -809,11 +889,17 @@ export function AdminEntriesClient() {
                         <div className="flex-1">
                           <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Заявку схвалив</p>
                           <p className="font-bold text-white">{detailEntry.entryRequest.decidedBy.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">@{detailEntry.entryRequest.decidedBy.discordId}</p>
                           <p className="text-[10px] text-zinc-600">
                             {detailEntry.entryRequest.decidedAt && new Date(detailEntry.entryRequest.decidedAt).toLocaleString()}
                           </p>
                         </div>
-                        <RoleBadge role={detailEntry.entryRequest.decidedBy.role} />
+                        <MultiRoleBadges 
+                          primaryRole={detailEntry.entryRequest.decidedBy.role} 
+                          additionalRoles={detailEntry.entryRequest.decidedBy.additionalRoles}
+                          roleDefs={roleDefs}
+                          size="sm"
+                        />
                       </div>
                     )}
                   </div>
