@@ -14,7 +14,6 @@ import {
   Shield
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { SinglePremiumTicker } from "./SinglePremiumTicker";
 
 type TopContributor = {
   id: string;
@@ -26,39 +25,6 @@ type TopContributor = {
 
 export function AdminHeader({ title, subtitle }: { title: string; subtitle: string }) {
   const pathname = usePathname();
-  const [topContributors, setTopContributors] = useState<TopContributor[]>([]);
-
-  // Fetch top contributors for the ticker
-  useEffect(() => {
-    const fetchContributors = async () => {
-      try {
-        const res = await fetch('/api/stats', { cache: 'no-store' });
-        const json = await res.json();
-        if (json.ok && json.data?.topContributors) {
-          setTopContributors(json.data.topContributors);
-        } else {
-          // Fallback data if API fails
-          setTopContributors([
-            { name: "Очікуємо лідерів...", totalAmount: 0, id: "1", role: "MEMBER", totalQuantity: 0 },
-            { name: "Склад поповнюється...", totalAmount: 0, id: "2", role: "MEMBER", totalQuantity: 0 },
-            { name: "Будь першим!", totalAmount: 0, id: "3", role: "MEMBER", totalQuantity: 0 }
-          ]);
-        }
-      } catch (e) {
-        console.error('Failed to fetch top contributors:', e);
-        // Fallback data if API fails
-        setTopContributors([
-          { name: "Очікуємо лідерів...", totalAmount: 0, id: "1", role: "MEMBER", totalQuantity: 0 },
-          { name: "Склад поповнюється...", totalAmount: 0, id: "2", role: "MEMBER", totalQuantity: 0 },
-          { name: "Будь першим!", totalAmount: 0, id: "3", role: "MEMBER", totalQuantity: 0 }
-        ]);
-      }
-    };
-
-    fetchContributors();
-    const interval = setInterval(fetchContributors, 10000); // Refresh every 10 seconds
-    return () => clearInterval(interval);
-  }, []);
 
   const navItems = [
     { href: "/admin/users", label: "Користувачі", icon: Users },
@@ -72,13 +38,6 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
 
   return (
     <>
-      {/* PREMIUM ADMIN TICKER - RIGHT TO LEFT SCROLL */}
-      <SinglePremiumTicker contributors={topContributors.map(c => ({
-        id: c.id,
-        name: c.name,
-        totalAmount: c.totalAmount
-      }))} />
-
       <header className="relative mb-10 overflow-hidden pt-4">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
