@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { 
   Users, 
   Wallet, 
@@ -12,10 +11,10 @@ import {
   TrendingUp,
   LayoutDashboard,
   Cog,
-  Trophy,
   Shield
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { PremiumTicker } from "./PremiumTicker";
 
 type TopContributor = {
   id: string;
@@ -73,99 +72,11 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
 
   return (
     <>
-      {/* Top Contributors Ticker */}
-      <div className="relative border-b border-white/5 bg-black/40 overflow-hidden h-10 flex items-center select-none group/ticker">
-        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
-        
-        <div className="flex whitespace-nowrap items-center">
-          <motion.div
-            className="flex gap-12 items-center px-6"
-            animate={{ x: ["-100%", "0%"] }}
-            transition={{ 
-              duration: topContributors.length > 0 ? Math.max(160, topContributors.length * 80) : 240, 
-              repeat: Infinity, 
-              ease: "linear" 
-            }}
-          >
-            {/* Content repeated many times for seamless infinite loop across all screen sizes */}
-            {[...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ]), ...(topContributors.length > 0 ? topContributors : [
-              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
-              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
-              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
-            ])].map((c: any, idx) => (
-              <div key={`${c.id || idx}-${idx}`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                    <Trophy className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-black text-xs text-white uppercase tracking-tight group-hover/ticker:text-amber-400 transition-colors">
-                    {c.name}
-                  </span>
-                </div>
-                {c.totalAmount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toLocaleString()} ₴</span>
-                  </div>
-                )}
-                <span className="text-white/10 font-black">/</span>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </div>
+      <PremiumTicker contributors={topContributors.map(c => ({
+        id: c.id,
+        name: c.name,
+        totalAmount: c.totalAmount
+      }))} />
 
       <header className="relative mb-10 overflow-hidden pt-4">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -196,10 +107,8 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
                   }`}
                 >
                   {isActive && (
-                    <motion.div
-                      layoutId="active-nav"
+                    <div
                       className="absolute inset-0 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/20"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
                   <Icon className={`relative z-10 w-3.5 h-3.5 ${isActive ? 'text-white' : ''}`} />
