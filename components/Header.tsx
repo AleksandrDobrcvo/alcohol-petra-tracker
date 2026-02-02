@@ -364,8 +364,8 @@ export function Header() {
         
         <div className="flex whitespace-nowrap items-center w-full">
           <motion.div
-            className="flex gap-12 items-center px-6 min-w-max"
-            animate={{ x: ["-100%", "0%"] }}
+            className="flex gap-12 items-center px-6"
+            animate={{ x: ["-50%", "0%"] }}
             transition={{ 
               duration: topContributors.length > 0 ? Math.max(30, topContributors.length * 15) : 45, 
               repeat: Infinity, 
@@ -373,34 +373,16 @@ export function Header() {
             }}
           >
             {/* Content duplicated for seamless infinite loop */}
-            {(topContributors.length > 0 ? topContributors : [
+            {[...(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0 },
               { name: "Склад поповнюється...", totalAmount: 0 },
               { name: "Будь першим!", totalAmount: 0 }
-            ]).map((c: any, idx) => (
-              <div key={`${c.id || idx}-${idx}-1`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                    <Trophy className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-black text-xs text-white uppercase tracking-tight group-hover/ticker:text-amber-400 transition-colors">
-                    {c.name}
-                  </span>
-                </div>
-                {c.totalAmount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                    <span className="text-[10px] font-black text-emerald-400">{c.totalAmount.toLocaleString()} ₴</span>
-                  </div>
-                )}
-                <span className="text-white/10 font-black">/</span>
-              </div>
-            ))}
-            {(topContributors.length > 0 ? topContributors : [
+            ]), ...(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0 },
               { name: "Склад поповнюється...", totalAmount: 0 },
               { name: "Будь першим!", totalAmount: 0 }
-            ]).map((c: any, idx) => (
-              <div key={`${c.id || idx}-${idx}-2`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
+            ])].map((c: any, idx) => (
+              <div key={`${c.id || idx}-${idx}`} className="flex items-center gap-4 hover:scale-105 transition-transform cursor-default">
                 <div className="flex items-center gap-2">
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
                     <Trophy className="w-3.5 h-3.5" />
