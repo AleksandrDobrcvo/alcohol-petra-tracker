@@ -83,13 +83,21 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
             className="flex gap-12 items-center px-6"
             animate={{ x: ["-100%", "0%"] }}
             transition={{ 
-              duration: topContributors.length > 0 ? Math.max(40, topContributors.length * 20) : 60, 
+              duration: topContributors.length > 0 ? Math.max(80, topContributors.length * 40) : 120, 
               repeat: Infinity, 
               ease: "linear" 
             }}
           >
-            {/* Content repeated twice for seamless infinite loop - this creates one continuous band */}
+            {/* Content repeated 4 times for seamless infinite loop - longer continuous band */}
             {[...(topContributors.length > 0 ? topContributors : [
+              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
+              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
+              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
+            ]), ...(topContributors.length > 0 ? topContributors : [
+              { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
+              { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
+              { name: "Будь першим!", totalAmount: 0, id: "fallback3" }
+            ]), ...(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
               { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
               { name: "Будь першим!", totalAmount: 0, id: "fallback3" }

