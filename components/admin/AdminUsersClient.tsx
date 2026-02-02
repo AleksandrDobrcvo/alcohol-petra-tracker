@@ -206,5 +206,4 @@ export function AdminUsersClient() {
       </div>
     </div>
   );
-}  );
 }
