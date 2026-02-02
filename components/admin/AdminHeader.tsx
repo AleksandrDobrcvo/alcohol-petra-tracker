@@ -81,14 +81,14 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
         <div className="flex whitespace-nowrap items-center">
           <motion.div
             className="flex gap-12 items-center px-6"
-            animate={{ x: ["-100%", "0%"] }}
+            animate={{ x: ["-50%", "0%"] }}
             transition={{ 
               duration: topContributors.length > 0 ? Math.max(20, topContributors.length * 10) : 30, 
               repeat: Infinity, 
               ease: "linear" 
             }}
           >
-            {/* Content repeated twice for seamless loop - only render once but duplicated for continuity */}
+            {/* Content repeated twice for seamless infinite loop - this creates one continuous band */}
             {[...(topContributors.length > 0 ? topContributors : [
               { name: "Очікуємо лідерів...", totalAmount: 0, id: "fallback1" },
               { name: "Склад поповнюється...", totalAmount: 0, id: "fallback2" },
