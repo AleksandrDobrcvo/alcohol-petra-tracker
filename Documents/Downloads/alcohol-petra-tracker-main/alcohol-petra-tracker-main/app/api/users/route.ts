@@ -1,0 +1,49 @@
+import { prisma } from "@/src/server/prisma";
+import { requireSession } from "@/src/server/auth";
+import { jsonError, jsonOk } from "@/src/server/http";
+import { canManageUsers } from "@/src/server/rbac";
+import { ApiError } from "@/src/server/errors";
+
+export async function GET() {
+  try {
+    const ctx = await requireSession();
+
+    const hasPermission = await canManageUsers(ctx);
+    const isAdminRole =
+      ctx.role === "LEADER" || ctx.role === "DEPUTY" || ctx.role === "SENIOR";
+    if (!hasPermission && !isAdminRole) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "Insufficient permissions to view users"
+      );
+    }
+
+    const users = await (prisma.user.findMany as any)({
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        discordId: true,
+        name: true,
+        role: true,
+        additionalRoles: true,
+        isBlocked: true,
+        banReason: true,
+        unbanDate: true,
+        isApproved: true,
+        moderatesAlco: true,
+        moderatesPetra: true,
+        isFrozen: true,
+        frozenReason: true,
+        cardNumber: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return jsonOk({ users });
+  } catch (e) {
+    return jsonError(e);
+  }
+}
