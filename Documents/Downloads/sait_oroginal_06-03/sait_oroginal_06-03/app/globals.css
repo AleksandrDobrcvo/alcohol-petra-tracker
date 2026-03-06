@@ -1,0 +1,333 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Page scale for better fit */
+@media (min-width: 1024px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 1023px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+.bg-clan {
+  background: #05080a !important;
+  position: relative;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+.bg-clan::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.03;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.02) 0%, transparent 70%);
+}
+
+.bg-clan::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 400px;
+  background: radial-gradient(ellipse 100% 100% at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes backgroundShift {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translateX(-20px) translateY(-10px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(10px) translateY(5px);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translateX(-10px) translateY(10px);
+    opacity: 0.95;
+  }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+.animate-blob {
+  animation: blobFloat 7s infinite alternate;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@keyframes floatY {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -16px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes floatX {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(10px, -10px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0) rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.float-petra {
+  animation: floatY 5.8s ease-in-out infinite;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
+}
+
+.float-alco {
+  animation: floatX 6.6s ease-in-out infinite;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
+}
+
+.sparkle {
+  animation: sparkle 3s ease-in-out infinite;
+}
+
+.pulse-glow {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Footer: анимації на CSS (без лагів) */
+.footer-animated {
+  animation: footerFadeIn 0.8s ease-out 0.3s both;
+}
+@keyframes footerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.footer-brand {
+  animation: footerPulse 3s ease-in-out infinite;
+}
+.footer-emoji {
+  display: inline-block;
+  animation: footerRotate 8s linear infinite;
+}
+.footer-dot {
+  animation: footerPulse 2s ease-in-out infinite 0.5s;
+}
+.footer-message {
+  animation: footerPulse 3s ease-in-out infinite 1s;
+}
+@keyframes footerPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+@keyframes footerRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.footer-icons .footer-icon {
+  display: inline-block;
+  animation: footerIconPulse 2.5s ease-in-out infinite;
+}
+.footer-icon-delay-1 { animation-delay: 0.5s; }
+.footer-icon-delay-2 { animation-delay: 1s; }
+@keyframes footerIconPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+/* BeerLoading: лёгкие CSS-анимации */
+.beer-loading-fade {
+  animation: beerFadeIn 0.4s ease-out;
+}
+@keyframes beerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.beer-fill {
+  animation: beerFillPulse 2s ease-in-out infinite;
+}
+@keyframes beerFillPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+.beer-icon-bob {
+  animation: beerBob 2s ease-in-out infinite;
+}
+@keyframes beerBob {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.05); }
+}
+.beer-text-pulse {
+  animation: beerTextPulse 1.5s ease-in-out infinite;
+}
+@keyframes beerTextPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Animated particles */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.6;
+  animation: floatUp 15s linear infinite;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100px) translateX(100px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .max-w-7xl {
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Footer adjustments for mobile */
+  footer {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  
+  footer .text-lg {
+    font-size: 1.125rem;
+  }
+  
+  footer .gap-6 {
+    gap: 1rem;
+  }
+  
+  footer .flex-col {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 12px;
+  }
+  
+  footer {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  footer .text-\[10px\] {
+    font-size: 0.65rem;
+  }
+  
+  footer .px-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  footer .gap-4 {
+    gap: 0.5rem;
+  }
+}
+
+/* Scrollbar improvements */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #f59e0b, #f97316);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #f97316, #f59e0b);
+}
+

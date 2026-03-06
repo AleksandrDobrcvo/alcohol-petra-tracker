@@ -1,0 +1,145 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RoleDefinition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  label       String
+  emoji       String   @default("👤")
+  color       String   @default("from-sky-500/50 to-sky-600/50")
+  textColor   String   @default("text-sky-400")
+  power       Int      @default(0)
+  desc        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  permissions Json?    @default("{}")
+}
+
+model User {
+  id                String            @id @default(uuid())
+  discordId         String            @unique
+  name              String
+  role              String            @default("MEMBER")
+  cardNumber        String?
+  isBlocked         Boolean           @default(false)
+  banReason         String?
+  unbanDate         DateTime?
+  isApproved        Boolean           @default(false)
+  moderatesAlco     Boolean           @default(false)
+  moderatesPetra    Boolean           @default(false)
+  isFrozen          Boolean           @default(false)
+  frozenReason      String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  additionalRoles   String[]          @default([])
+  lastSeenAt        DateTime?
+  auditLogs         AuditLog[]        @relation("AuditActor")
+  createdEntries    Entry[]           @relation("EntryCreator")
+  submittedEntries  Entry[]           @relation("EntrySubmitter")
+  updatedEntries    Entry[]           @relation("EntryUpdater")
+  decidedRequests   EntryRequest[]    @relation("RequestDecider")
+  submittedRequests EntryRequest[]    @relation("RequestSubmitter")
+  publicViewTokens  PublicViewToken[] @relation("PublicTokenCreator")
+}
+
+model Entry {
+  id            String        @id @default(uuid())
+  date          DateTime
+  submitterId   String
+  type          String
+  stars         Int
+  quantity      Int
+  amount        Float
+  paymentStatus String        @default("UNPAID")
+  paidAt        DateTime?
+  createdById   String
+  updatedById   String?
+  requestId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     User          @relation("EntryCreator", fields: [createdById], references: [id])
+  entryRequest  EntryRequest? @relation("RequestEntries", fields: [requestId], references: [id])
+  submitter     User          @relation("EntrySubmitter", fields: [submitterId], references: [id])
+  updatedBy     User?         @relation("EntryUpdater", fields: [updatedById], references: [id])
+
+  @@index([date])
+  @@index([submitterId])
+  @@index([paymentStatus])
+  @@index([type])
+  @@index([requestId])
+}
+
+model EntryRequest {
+  id             String    @id @default(uuid())
+  submitterId    String
+  date           DateTime
+  type           String
+  stars1Qty      Int       @default(0)
+  stars2Qty      Int       @default(0)
+  stars3Qty      Int       @default(0)
+  totalAmount    Float
+  nickname       String
+  screenshotPath String
+  status         String    @default("PENDING")
+  decidedAt      DateTime?
+  decisionNote   String?
+  decidedById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  cardLastDigits String?
+  entries        Entry[]   @relation("RequestEntries")
+  decidedBy      User?     @relation("RequestDecider", fields: [decidedById], references: [id])
+  submitter      User      @relation("RequestSubmitter", fields: [submitterId], references: [id])
+
+  @@index([status])
+  @@index([type])
+  @@index([submitterId])
+  @@index([decidedById])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String
+  action      String
+  targetType  String
+  targetId    String
+  before      String?
+  after       String?
+  createdAt   DateTime @default(now())
+  actor       User     @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([targetType, targetId])
+}
+
+model PublicViewToken {
+  id          String   @id @default(uuid())
+  tokenHash   String   @unique
+  isRevoked   Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation("PublicTokenCreator", fields: [createdById], references: [id])
+
+  @@index([isRevoked])
+  @@index([createdAt])
+}
+
+model Pricing {
+  id        String   @id @default(uuid())
+  type      String
+  stars     Int
+  price     Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, stars])
+}
