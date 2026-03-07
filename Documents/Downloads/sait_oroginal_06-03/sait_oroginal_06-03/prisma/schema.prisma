@@ -47,6 +47,8 @@ model User {
   decidedRequests   EntryRequest[]    @relation("RequestDecider")
   submittedRequests EntryRequest[]    @relation("RequestSubmitter")
   publicViewTokens  PublicViewToken[] @relation("PublicTokenCreator")
+  cecBookings       CecBooking[]      @relation("CecBookingUser")
+  approvedBookings  CecBooking[]      @relation("CecBookingApprover")
 }
 
 model Entry {
@@ -142,4 +144,28 @@ model Pricing {
   updatedAt DateTime @updatedAt
 
   @@unique([type, stars])
+}
+
+model CecBooking {
+  id          String   @id @default(uuid())
+  userId      String
+  cecType     String   // "PETRA" або "ALCO"
+  startTime   DateTime
+  endTime     DateTime
+  duration    Int      // у годинах
+  reason      String?  // причина/коментар
+  status      String   @default("PENDING") // "PENDING" | "APPROVED" | "ACTIVE" | "COMPLETED" | "CANCELLED"
+  approvedBy  String?
+  approvedAt  DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("CecBookingUser", fields: [userId], references: [id], onDelete: Cascade)
+  approver    User?    @relation("CecBookingApprover", fields: [approvedBy], references: [id])
+
+  @@index([userId])
+  @@index([cecType])
+  @@index([status])
+  @@index([startTime])
+  @@index([endTime])
 }

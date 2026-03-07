@@ -11,7 +11,8 @@ import {
   TrendingUp,
   LayoutDashboard,
   Cog,
-  Shield
+  Shield,
+  Sprout
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -30,6 +31,7 @@ export function AdminHeader({ title, subtitle }: { title: string; subtitle: stri
     { href: "/admin/users", label: "Користувачі", icon: Users },
     { href: "/admin/entries", label: "Записи", icon: Wallet },
     { href: "/admin/requests", label: "Заявки", icon: CheckCircle2 },
+    { href: "/admin/cec-bookings", label: "Цехи", icon: Sprout },
     { href: "/admin/pricing", label: "Ціни", icon: TrendingUp },
     { href: "/admin/audit", label: "Аудит", icon: History },
     { href: "/admin/roles", label: "Ролі", icon: Shield },

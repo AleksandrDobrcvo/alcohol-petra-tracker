@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/server/authOptions";
 import LazyFormWrapper from "@/components/LazyFormWrapper";
 import RefreshSessionButton from "@/components/RefreshSessionButton";
+import { CecBookingCards } from "@/components/CecBookingCards";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,12 @@ export default async function HomePage() {
           </section>
         )}
       </div>
+
+      {session && (
+        <section className="relative z-10 mt-10">
+          <CecBookingCards />
+        </section>
+      )}
 
       {session && (
         <section className="relative z-10 mt-6 text-center">
