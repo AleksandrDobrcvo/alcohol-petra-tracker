@@ -466,8 +466,8 @@ export function Header() {
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
 
-        <div className="flex whitespace-nowrap items-center w-full">
-          <div className="flex gap-12 items-center px-6">
+        <div className="flex whitespace-nowrap items-center w-full overflow-hidden">
+          <div className="flex items-center">
             {(() => {
               const items =
                 topContributors.length > 0
@@ -478,15 +478,16 @@ export function Header() {
                       { id: "p3", name: "Будь першим!", totalAmount: 0 },
                     ];
 
-              const duplicated = [...items, ...items];
+              // Triple the items to ensure full screen coverage
+              const duplicated = [...items, ...items, ...items, ...items];
               const duration =
                 items.length > 0
-                  ? Math.max(30, items.length * 10)
-                  : 40;
+                  ? Math.max(20, items.length * 8)
+                  : 30;
 
               return (
                 <motion.div
-                  className="flex gap-12 items-center"
+                  className="flex gap-8 items-center pl-4"
                   animate={{ x: ["0%", "-50%"] }}
                   transition={{
                     duration,
