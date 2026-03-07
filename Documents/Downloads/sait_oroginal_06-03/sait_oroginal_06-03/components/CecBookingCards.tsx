@@ -26,6 +26,8 @@ export function CecBookingCards() {
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCec, setSelectedCec] = useState<"PETRA" | "ALCO">("PETRA");
+  const [selectedQueueCount, setSelectedQueueCount] = useState(0);
+  const [selectedHasActive, setSelectedHasActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,6 +75,8 @@ export function CecBookingCards() {
 
   const handleBooking = (cecType: "PETRA" | "ALCO") => {
     setSelectedCec(cecType);
+    setSelectedQueueCount(queue[cecType] || 0);
+    setSelectedHasActive(!!current[cecType]);
     setIsModalOpen(true);
   };
 
@@ -97,106 +101,152 @@ export function CecBookingCards() {
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* ПЕТРУШКА */}
-        <div className="group relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/50 to-emerald-900/20 p-8 backdrop-blur transition-all hover:border-emerald-500/60">
+        <div className="group relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/60 via-emerald-900/40 to-emerald-900/10 p-6 md:p-7 backdrop-blur-xl transition-all hover:border-emerald-400/80 hover:shadow-[0_0_40px_rgba(16,185,129,0.35)]">
           <div className="absolute inset-0 bg-emerald-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
 
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-emerald-400">🍃 ПЕТРУШКА</h3>
-              <span
-                className={`h-3 w-3 rounded-full ${
-                  current.PETRA ? "bg-orange-500 animate-pulse" : "bg-emerald-500"
-                }`}
-              />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-2xl shadow-inner shadow-emerald-500/40">
+                  🍃
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold text-emerald-200 tracking-wide">
+                    ПЕТРУШКА
+                  </h3>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300/70">
+                    зелений цех
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 text-xs">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold ${
+                    current.PETRA
+                      ? "bg-amber-500/15 text-amber-200 border border-amber-400/40"
+                      : "bg-emerald-500/15 text-emerald-200 border border-emerald-400/40"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      current.PETRA ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                    }`}
+                  />
+                  {current.PETRA ? "ЗАЙНЯТО" : "ВІЛЬНО"}
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  Черга:{" "}
+                  <span className="font-semibold text-emerald-200">
+                    {queue.PETRA} {queue.PETRA === 1 ? "особа" : "осіб"}
+                  </span>
+                </span>
+              </div>
             </div>
 
-            {current.PETRA ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-zinc-400">Займає:</p>
-                  <p className="text-lg font-semibold text-white">
-                    @{current.PETRA.user.name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Залишилось:</p>
-                  <p className="text-lg font-semibold text-emerald-400">
-                    {getTimeLeft(current.PETRA.endTime)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Чекають:</p>
-                  <p className="text-lg font-semibold text-white">
-                    {queue.PETRA} {queue.PETRA === 1 ? "особа" : "осіб"}
-                  </p>
-                </div>
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-zinc-400">Поточний гравець</p>
+                <p className="text-base font-semibold text-white">
+                  {current.PETRA ? `@${current.PETRA.user.name}` : "Ніхто не зайняв"}
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center py-4">
-                  <p className="text-3xl font-bold text-emerald-400">ВІЛЬНО!</p>
-                </div>
-                <button
-                  onClick={() => handleBooking("PETRA")}
-                  disabled={!session}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  📝 Забронювати
-                </button>
+              <div>
+                <p className="text-xs text-zinc-400">Приблизно залишилось</p>
+                <p className="text-base font-semibold text-emerald-300">
+                  {current.PETRA ? getTimeLeft(current.PETRA.endTime) : "—"}
+                </p>
               </div>
-            )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+              <p className="text-zinc-400">
+                Можеш забронювати місце навіть якщо цех зайнятий — ти потрапиш в
+                чергу.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleBooking("PETRA")}
+              disabled={!session}
+              className="mt-5 w-full rounded-xl bg-emerald-500/90 px-4 py-3 text-sm font-semibold text-white shadow-[0_0_25px_rgba(16,185,129,0.6)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_40px_rgba(16,185,129,0.9)] disabled:opacity-50 disabled:shadow-none"
+            >
+              {session ? "📝 Забронювати місце" : "Увійди через Discord, щоб бронювати"}
+            </button>
           </div>
         </div>
 
         {/* АЛКОГОЛЬ */}
-        <div className="group relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/50 to-amber-900/20 p-8 backdrop-blur transition-all hover:border-amber-500/60">
+        <div className="group relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/60 via-amber-900/40 to-amber-900/10 p-6 md:p-7 backdrop-blur-xl transition-all hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(245,158,11,0.35)]">
           <div className="absolute inset-0 bg-amber-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
 
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-amber-400">🍺 АЛКОГОЛЬ</h3>
-              <span
-                className={`h-3 w-3 rounded-full ${
-                  current.ALCO ? "bg-orange-500 animate-pulse" : "bg-amber-500"
-                }`}
-              />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-2xl shadow-inner shadow-amber-500/40">
+                  🍺
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold text-amber-200 tracking-wide">
+                    АЛКОГОЛЬ
+                  </h3>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-amber-300/70">
+                    золотий цех
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 text-xs">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold ${
+                    current.ALCO
+                      ? "bg-amber-500/15 text-amber-200 border border-amber-400/40"
+                      : "bg-emerald-500/15 text-emerald-200 border border-emerald-400/40"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      current.ALCO ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                    }`}
+                  />
+                  {current.ALCO ? "ЗАЙНЯТО" : "ВІЛЬНО"}
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  Черга:{" "}
+                  <span className="font-semibold text-amber-200">
+                    {queue.ALCO} {queue.ALCO === 1 ? "особа" : "осіб"}
+                  </span>
+                </span>
+              </div>
             </div>
 
-            {current.ALCO ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-zinc-400">Займає:</p>
-                  <p className="text-lg font-semibold text-white">
-                    @{current.ALCO.user.name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Залишилось:</p>
-                  <p className="text-lg font-semibold text-amber-400">
-                    {getTimeLeft(current.ALCO.endTime)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Чекають:</p>
-                  <p className="text-lg font-semibold text-white">
-                    {queue.ALCO} {queue.ALCO === 1 ? "особа" : "осіб"}
-                  </p>
-                </div>
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-zinc-400">Поточний гравець</p>
+                <p className="text-base font-semibold text-white">
+                  {current.ALCO ? `@${current.ALCO.user.name}` : "Ніхто не зайняв"}
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center py-4">
-                  <p className="text-3xl font-bold text-amber-400">ВІЛЬНО!</p>
-                </div>
-                <button
-                  onClick={() => handleBooking("ALCO")}
-                  disabled={!session}
-                  className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  📝 Забронювати
-                </button>
+              <div>
+                <p className="text-xs text-zinc-400">Приблизно залишилось</p>
+                <p className="text-base font-semibold text-amber-300">
+                  {current.ALCO ? getTimeLeft(current.ALCO.endTime) : "—"}
+                </p>
               </div>
-            )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+              <p className="text-zinc-400">
+                Забронюй слот зараз — якщо цех зайнятий, ти станеш наступним у
+                черзі.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleBooking("ALCO")}
+              disabled={!session}
+              className="mt-5 w-full rounded-xl bg-amber-500/90 px-4 py-3 text-sm font-semibold text-white shadow-[0_0_25px_rgba(245,158,11,0.6)] transition-all hover:bg-amber-400 hover:shadow-[0_0_40px_rgba(245,158,11,0.9)] disabled:opacity-50 disabled:shadow-none"
+            >
+              {session ? "📝 Забронювати місце" : "Увійди через Discord, щоб бронювати"}
+            </button>
           </div>
         </div>
       </div>
@@ -204,6 +254,8 @@ export function CecBookingCards() {
       <CecBookingModal
         isOpen={isModalOpen}
         cecType={selectedCec}
+        queueCount={selectedQueueCount}
+        hasActive={selectedHasActive}
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => {
           setIsModalOpen(false);
