@@ -4,7 +4,9 @@
     {
       "src": "package.json",
       "use": "@vercel/next",
-      "config": {}
+      "config": {
+        "preBuildCommand": "npm run prisma:migrate-deploy || true"
+      }
     }
   ],
   "routes": [
