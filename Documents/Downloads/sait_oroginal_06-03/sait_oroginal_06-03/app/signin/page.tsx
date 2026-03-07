@@ -1,24 +1,74 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function SignInPage() {
+function mapNextAuthError(errorCode: string | null): string | null {
+  if (!errorCode) return null;
+  switch (errorCode) {
+    case "OAuthCallback":
+      return "Не удалось завершить OAuth-поток. Проверьте Redirect URI в Discord Developer Portal.";
+    case "AccessDenied":
+      return "Отказано в доступе (вы могли отменить авторизацию).";
+    case "Configuration":
+      return "Ошибка конфигурации (проверьте DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET и NEXTAUTH_URL).";
+    case "Verification":
+      return "Не удалось проверить сессию. Попробуйте очистить cookies и повторить попытку.";
+    case "Callback":
+      return "Ошибка на сервере при обработке авторизации. Проверьте логи сервера.";
+    default:
+      return `Ошибка входа: ${errorCode}`;
+  }
+}
+
+function SignInContent() {
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>("");
   const { data: session, status } = useSession();
   const didRedirect = useRef(false);
+  const redirectAttempts = useRef(0);
+
+  const urlError = searchParams.get("error");
 
   useEffect(() => {
+    if (urlError) {
+      const mappedError = mapNextAuthError(urlError);
+      setError(mappedError || `OAuth error: ${urlError}`);
+      setDebugInfo(`Error code: ${urlError}`);
+    }
+  }, [urlError]);
+
+  useEffect(() => {
+    console.log("📍 SignIn page - status:", status, "session:", !!session);
+    
     if (status === "loading") return;
+    
     if (session) {
+      console.log("✅ User is authenticated, redirecting to home");
       window.location.href = "/";
       return;
     }
+    
     if (status === "unauthenticated" && !didRedirect.current) {
+      redirectAttempts.current++;
+      
+      // Prevent infinite redirect loop
+      if (redirectAttempts.current > 1) {
+        console.error("❌ Too many redirect attempts, stopping");
+        setError("Infinite redirect detected. Please clear cookies and try again.");
+        setDebugInfo(`Redirect attempts: ${redirectAttempts.current}`);
+        return;
+      }
+      
       didRedirect.current = true;
+      console.log("🔐 Starting Discord signin...");
+      
       signIn("discord", { callbackUrl: "/", redirect: true }).catch((e) => {
-        setError(e instanceof Error ? e.message : "Unknown error");
+        console.error("❌ SignIn error:", e);
+        setError(e instanceof Error ? e.message : "Unknown error during signin");
         didRedirect.current = false;
       });
     }
@@ -26,9 +76,31 @@ export default function SignInPage() {
 
   const handleSignIn = () => {
     setError(null);
+    setDebugInfo("Connecting to Discord...");
+    redirectAttempts.current = 0;
+    didRedirect.current = false;
+    
     signIn("discord", { callbackUrl: "/", redirect: true }).catch((e) => {
+      console.error("❌ Manual signin error:", e);
       setError(e instanceof Error ? e.message : "Unknown error");
     });
+  };
+
+  const handleClearCookies = async () => {
+    setError(null);
+    setDebugInfo("Clearing cookies...");
+    
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      const eqPos = c.indexOf("=");
+      const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    });
+    
+    setDebugInfo("Cookies cleared. Refreshing page...");
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   return (
@@ -59,6 +131,16 @@ export default function SignInPage() {
           {status === "loading" ? "Перевіряємо сесію..." : "Якщо нічого не відбулось — натисни кнопку нижче."}
         </p>
 
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-left">
+            <p className="text-sm font-medium text-red-400">⚠️ Помилка:</p>
+            <p className="mt-1 text-sm text-red-300">{error}</p>
+            {debugInfo && (
+              <p className="mt-2 text-xs text-red-200/60">{debugInfo}</p>
+            )}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <button
             onClick={handleSignIn}
@@ -67,6 +149,16 @@ export default function SignInPage() {
           >
             🔁 Повторити вхід
           </button>
+          
+          {error && (
+            <button
+              onClick={handleClearCookies}
+              className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white hover:bg-orange-400"
+            >
+              🗑️ Очистити cookies
+            </button>
+          )}
+          
           <Link
             className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
             href="/"
@@ -75,12 +167,34 @@ export default function SignInPage() {
           </Link>
         </div>
 
-        {error ? (
-          <div className="mt-4 rounded-xl border border-red-900/60 bg-red-950/40 p-3 text-sm text-red-200">
-            ❌ {error}
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-left">
+            <p className="text-sm font-medium text-red-400">⚠️ Помилка:</p>
+            <p className="mt-1 text-sm text-red-300">{error}</p>
+            {debugInfo && (
+              <p className="mt-2 text-xs text-red-200/60">{debugInfo}</p>
+            )}
           </div>
-        ) : null}
+        )}
       </div>
     </main>
+  );
+}
+
+function SignInPageSkeleton() {
+  return (
+    <main className="relative mx-auto flex min-h-[calc(100vh-0px)] max-w-4xl flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="relative z-10 w-full rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        <h1 className="text-3xl font-semibold tracking-tight">Загружаємо...</h1>
+      </div>
+    </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<SignInPageSkeleton />}>
+      <SignInContent />
+    </Suspense>
   );
 }
