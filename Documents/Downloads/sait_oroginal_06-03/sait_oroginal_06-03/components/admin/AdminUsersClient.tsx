@@ -61,6 +61,21 @@ export function AdminUsersClient() {
   const [sortBy, setSortBy] = useState<SortKey>("ROLE");
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
 
+  const ROLE_LABELS_UA: Record<string, string> = {
+    LEADER: "Лідер",
+    DEPUTY: "Заступник",
+    SENIOR: "Старший",
+    ALCO_STAFF: "Алко модератор",
+    PETRA_STAFF: "Петра модератор",
+    MEMBER: "Учасник",
+  };
+
+  const roleLabelByName = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of roleOptions) map[r.name] = r.label;
+    return map;
+  }, [roleOptions]);
+
   // Check if user has required permissions
   const hasPermission =
     session?.user?.role === "LEADER" ||
@@ -69,7 +84,7 @@ export function AdminUsersClient() {
 
   useEffect(() => {
     if (!hasPermission) {
-      setError("Insufficient role-based permissions");
+      setError("Недостатньо прав доступу");
       setLoading(false);
       return;
     }
@@ -81,13 +96,13 @@ export function AdminUsersClient() {
         const json = await res.json();
         
         if (!json.ok) {
-          setError(json.error?.message || "Failed to fetch users");
+          setError(json.error?.message || "Не вдалося завантажити користувачів");
           return;
         }
         
         setUsers(json.data.users || []);
       } catch (err) {
-        setError("Failed to fetch users");
+        setError("Не вдалося завантажити користувачів");
         console.error("Error fetching users:", err);
       } finally {
         setLoading(false);
@@ -109,7 +124,10 @@ export function AdminUsersClient() {
           const opts =
             (json.data.roles as any[]).map((r) => ({
               name: r.name as string,
-              label: (r.label as string) || (r.name as string),
+              label:
+                ROLE_LABELS_UA[r.name as string] ||
+                (r.label as string) ||
+                (r.name as string),
             })) ?? [];
           setRoleOptions(opts);
         }
@@ -136,10 +154,10 @@ export function AdminUsersClient() {
           u.id === userId ? { ...u, isApproved: !currentStatus } : u
         ));
       } else {
-        alert(json.error?.message || "Failed to update user approval");
+        alert(json.error?.message || "Не вдалося змінити підтвердження");
       }
     } catch (err) {
-      alert("Failed to update user approval");
+      alert("Не вдалося змінити підтвердження");
     }
   };
 
@@ -170,10 +188,10 @@ export function AdminUsersClient() {
           )
         );
       } else {
-        alert(json.error?.message || "Failed to update user role");
+        alert(json.error?.message || "Не вдалося змінити роль");
       }
     } catch (err) {
-      alert("Failed to update user role");
+      alert("Не вдалося змінити роль");
     }
   };
 
@@ -222,10 +240,10 @@ export function AdminUsersClient() {
         );
         setBlockUser(null);
       } else {
-        alert(json.error?.message || "Failed to update block status");
+        alert(json.error?.message || "Не вдалося змінити блокування");
       }
     } catch (err) {
-      alert("Failed to update block status");
+      alert("Не вдалося змінити блокування");
     } finally {
       setBlockSaving(false);
     }
@@ -243,6 +261,7 @@ export function AdminUsersClient() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: editingUser.name,
           role: editingUser.role,
           additionalRoles: editingUser.additionalRoles,
           moderatesAlco: editingUser.moderatesAlco,
@@ -263,6 +282,7 @@ export function AdminUsersClient() {
             u.id === updated.id
               ? {
                   ...u,
+                  name: updated.name,
                   role: updated.role,
                   additionalRoles: updated.additionalRoles,
                   moderatesAlco: updated.moderatesAlco,
@@ -276,10 +296,10 @@ export function AdminUsersClient() {
         );
         setEditingUser(null);
       } else {
-        alert(json.error?.message || "Failed to save user settings");
+        alert(json.error?.message || "Не вдалося зберегти налаштування");
       }
     } catch (err) {
-      alert("Failed to save user settings");
+      alert("Не вдалося зберегти налаштування");
     } finally {
       setEditSaving(false);
     }
@@ -559,8 +579,10 @@ export function AdminUsersClient() {
       {/* Role + sort */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-2 text-xs">
-          {["LEADER", "DEPUTY", "SENIOR", "ALCO_STAFF", "PETRA_STAFF", "MEMBER"].map(
-            (role) => (
+          {(roleOptions.length > 0
+            ? roleOptions.map((r) => r.name)
+            : ["LEADER", "DEPUTY", "SENIOR", "ALCO_STAFF", "PETRA_STAFF", "MEMBER"]
+          ).map((role) => (
               <button
                 key={role}
                 onClick={() =>
@@ -572,10 +594,9 @@ export function AdminUsersClient() {
                     : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10"
                 }`}
               >
-                {role}
+                {roleLabelByName[role] || role}
               </button>
-            )
-          )}
+            ))}
         </div>
         <div className="flex items-center gap-2 text-xs">
           <CalendarClock className="w-4 h-4 text-zinc-500" />
@@ -656,12 +677,21 @@ export function AdminUsersClient() {
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => changeRole(user.id, e.target.value)}
                 className="px-3 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded text-white"
               >
-                <option value="MEMBER">MEMBER</option>
-                <option value="ALCO_STAFF">ALCO_STAFF</option>
-                <option value="PETRA_STAFF">PETRA_STAFF</option>
-                <option value="SENIOR">SENIOR</option>
-                <option value="DEPUTY">DEPUTY</option>
-                <option value="LEADER">LEADER</option>
+                {(roleOptions.length > 0
+                  ? roleOptions
+                  : [
+                      { name: "MEMBER", label: "Учасник" },
+                      { name: "ALCO_STAFF", label: "Алко" },
+                      { name: "PETRA_STAFF", label: "Петра" },
+                      { name: "SENIOR", label: "Старший" },
+                      { name: "DEPUTY", label: "Заступник" },
+                      { name: "LEADER", label: "Лідер" },
+                    ]
+                ).map((r) => (
+                  <option key={r.name} value={r.name}>
+                    {r.label}
+                  </option>
+                ))}
               </select>
               <Button
                 variant={user.isApproved ? "outline" : "primary"}
@@ -764,6 +794,21 @@ export function AdminUsersClient() {
             </h3>
             <div className="space-y-2">
               <label className="text-[11px] text-zinc-500 font-bold uppercase">
+                Нік на сайті
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-white"
+                value={editingUser.name ?? ""}
+                onChange={e =>
+                  setEditingUser(prev =>
+                    prev ? { ...prev, name: e.target.value } : prev
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] text-zinc-500 font-bold uppercase">
                 Номер карти
               </label>
               <input
@@ -829,7 +874,7 @@ export function AdminUsersClient() {
                     )
                   }
                 />
-                Модерує ALCO
+                Модерує Алко
               </label>
               <label className="flex items-center gap-2 text-sm text-zinc-300">
                 <input
@@ -843,7 +888,7 @@ export function AdminUsersClient() {
                     )
                   }
                 />
-                Модерує PETRA
+                Модерує Петру
               </label>
             </div>
             <div className="space-y-2">
