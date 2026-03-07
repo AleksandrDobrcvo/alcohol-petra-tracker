@@ -94,16 +94,24 @@ export default async function HomePage() {
           </div>
         )}
 
-        {session && (
-          <section className="relative z-10 mt-6 text-center">
+      {session && (
+        <section className="relative z-10 mt-6 text-center">
+          <div className="inline-flex flex-wrap items-center justify-center gap-3">
             <Link
               className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur hover:bg-white/15"
               href="/entries"
             >
               📒 Перейти до записів
             </Link>
-          </section>
-        )}
+            <Link
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-100 backdrop-blur hover:bg-emerald-500/30 hover:text-white border border-emerald-400/40 transition-all"
+              href="/cec-bookings"
+            >
+              🏭 Бронювання цехів
+            </Link>
+          </div>
+        </section>
+      )}
 
         {session && (role === "LEADER" || role === "DEPUTY" || role === "SENIOR") && (
           <section className="relative z-10 mt-4 text-center">
@@ -117,12 +125,6 @@ export default async function HomePage() {
           </section>
         )}
       </div>
-
-      {session && (
-        <section className="relative z-10 mt-10">
-          <CecBookingCards />
-        </section>
-      )}
 
       {session && (
         <section className="relative z-10 mt-6 text-center">
