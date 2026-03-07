@@ -42,11 +42,7 @@ CREATE INDEX "WorkshopBooking_status_idx" ON "WorkshopBooking"("status");
 ALTER TABLE "WorkshopBooking" ADD CONSTRAINT "WorkshopBooking_workshopId_fkey" FOREIGN KEY ("workshopId") REFERENCES "Workshop"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "WorkshopBooking" ADD CONSTRAINT "WorkshopBooking_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Seed default workshops
+-- Seed default workshops (2 workshops: Alco and Petra)
 INSERT INTO "Workshop" ("id", "name", "type", "description", "emoji", "color", "capacity", "isActive", "sortOrder", "updatedAt") VALUES
-  (gen_random_uuid(), 'Алко Цех #1', 'ALCO', 'Основний цех виробництва алкоголю', '🍺', 'from-amber-500 to-orange-600', 1, true, 1, NOW()),
-  (gen_random_uuid(), 'Алко Цех #2', 'ALCO', 'Додатковий цех алкоголю', '🍻', 'from-yellow-500 to-amber-600', 1, true, 2, NOW()),
-  (gen_random_uuid(), 'Алко Цех #3', 'ALCO', 'Резервний цех алкоголю', '🥃', 'from-orange-500 to-red-600', 1, true, 3, NOW()),
-  (gen_random_uuid(), 'Петра Цех #1', 'PETRA', 'Основний цех видобутку петри', '🌿', 'from-emerald-500 to-green-600', 1, true, 4, NOW()),
-  (gen_random_uuid(), 'Петра Цех #2', 'PETRA', 'Додатковий цех петри', '🍀', 'from-green-500 to-teal-600', 1, true, 5, NOW()),
-  (gen_random_uuid(), 'Петра Цех #3', 'PETRA', 'Резервний цех петри', '🌱', 'from-teal-500 to-cyan-600', 1, true, 6, NOW());
+  (gen_random_uuid(), 'Алко Цех', 'ALCO', 'Цех виробництва алкоголю', '🍺', 'from-amber-500 to-orange-600', 1, true, 1, NOW()),
+  (gen_random_uuid(), 'Петра Цех', 'PETRA', 'Цех видобутку петри', '🌿', 'from-emerald-500 to-green-600', 1, true, 2, NOW());
