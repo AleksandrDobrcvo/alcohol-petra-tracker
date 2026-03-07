@@ -47,6 +47,7 @@ model User {
   decidedRequests   EntryRequest[]    @relation("RequestDecider")
   submittedRequests EntryRequest[]    @relation("RequestSubmitter")
   publicViewTokens  PublicViewToken[] @relation("PublicTokenCreator")
+  workshopBookings  WorkshopBooking[] @relation("WorkshopBooker")
 }
 
 model Entry {
@@ -142,4 +143,41 @@ model Pricing {
   updatedAt DateTime @updatedAt
 
   @@unique([type, stars])
+}
+
+model Workshop {
+  id          String            @id @default(uuid())
+  name        String
+  type        String            // ALCO, PETRA, UNIVERSAL
+  description String?
+  emoji       String            @default("🏭")
+  color       String            @default("from-zinc-500 to-zinc-700")
+  capacity    Int               @default(1)
+  isActive    Boolean           @default(true)
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  bookings    WorkshopBooking[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model WorkshopBooking {
+  id         String   @id @default(uuid())
+  workshopId String
+  userId     String
+  status     String   @default("WAITING") // ACTIVE, WAITING, COMPLETED, CANCELLED
+  position   Int      @default(0)
+  note       String?
+  startedAt  DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  workshop   Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  user       User     @relation("WorkshopBooker", fields: [userId], references: [id])
+
+  @@index([workshopId, status])
+  @@index([userId])
+  @@index([status])
 }

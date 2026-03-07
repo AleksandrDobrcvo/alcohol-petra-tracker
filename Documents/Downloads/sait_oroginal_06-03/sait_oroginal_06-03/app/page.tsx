@@ -129,7 +129,14 @@ export default async function HomePage() {
       )}
 
       {session && (
-        <section className="relative z-10 mt-4 text-center">
+        <section className="relative z-10 mt-4 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600/20 to-amber-600/20 border border-emerald-500/20 px-6 py-3 text-sm font-black uppercase tracking-widest text-emerald-300 backdrop-blur hover:from-emerald-600/30 hover:to-amber-600/30 hover:text-white transition-all"
+            href="/workshops"
+          >
+            🏭 Цехи
+            <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
           <Link
             className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/20 px-6 py-3 text-sm font-black uppercase tracking-widest text-purple-300 backdrop-blur hover:from-purple-600/30 hover:to-pink-600/30 hover:text-white transition-all"
             href="/casino"

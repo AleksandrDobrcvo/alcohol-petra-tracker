@@ -193,6 +193,11 @@ export function Header() {
               </Link>
             )}
             {session && (
+              <Link href="/workshops" className="rounded-xl bg-gradient-to-r from-emerald-600/30 to-amber-600/30 border border-emerald-500/20 px-3 py-2 text-emerald-300 hover:from-emerald-600/40 hover:to-amber-600/40 hover:text-white transition-all">
+                🏭 Цехи
+              </Link>
+            )}
+            {session && (
               <Link href="/casino" className="rounded-xl bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-500/20 px-3 py-2 text-purple-300 hover:from-purple-600/40 hover:to-pink-600/40 hover:text-white transition-all">
                 🎰 Казино
               </Link>
@@ -355,6 +360,9 @@ export function Header() {
                 </Link>
                 <Link href="/public/stats" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-white/5 px-4 py-3 text-white">
                   📊 Статистика
+                </Link>
+                <Link href="/workshops" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-gradient-to-r from-emerald-600/20 to-amber-600/20 border border-emerald-500/20 px-4 py-3 text-emerald-300">
+                  🏭 Цехи
                 </Link>
                 <Link href="/casino" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/20 px-4 py-3 text-purple-300">
                   🎰 Казино
