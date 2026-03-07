@@ -192,6 +192,11 @@ export function Header() {
                 📒 Записи
               </Link>
             )}
+            {session && (
+              <Link href="/casino" className="rounded-xl bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-500/20 px-3 py-2 text-purple-300 hover:from-purple-600/40 hover:to-pink-600/40 hover:text-white transition-all">
+                🎰 Казино
+              </Link>
+            )}
             {status === "loading" ? (
               <div className="text-zinc-400">...</div>
             ) : session ? (
@@ -350,6 +355,9 @@ export function Header() {
                 </Link>
                 <Link href="/public/stats" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-white/5 px-4 py-3 text-white">
                   📊 Статистика
+                </Link>
+                <Link href="/casino" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/20 px-4 py-3 text-purple-300">
+                  🎰 Казино
                 </Link>
                 {canSeeRequests && (
                   <Link href="/admin/requests" onClick={() => setMobileMenuOpen(false)} className="relative flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3 text-emerald-300">
