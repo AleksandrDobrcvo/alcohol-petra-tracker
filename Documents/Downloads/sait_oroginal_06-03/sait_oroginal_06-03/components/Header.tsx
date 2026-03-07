@@ -15,6 +15,27 @@ type TopContributor = {
   totalQuantity: number;
 };
 
+type NotificationItem =
+  | {
+      id: string;
+      kind: "REQUEST_DECISION";
+      type: "ALCO" | "PETRA";
+      status: "APPROVED" | "REJECTED" | string;
+      totalAmount: number;
+      decidedAt: string | Date | null;
+      decisionNote?: string | null;
+      decidedBy?: { id: string; name: string; role: string } | null;
+    }
+  | {
+      id: string;
+      kind: "PROFILE_CHANGE";
+      action: string;
+      createdAt: string | Date;
+      actor: { id: string; name: string; role: string } | null;
+      before?: string | null;
+      after?: string | null;
+    };
+
 export function Header() {
   const { data: session, status, update } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -25,7 +46,7 @@ export function Header() {
   const [pendingUsers, setPendingUsers] = useState(0);
   const [onlineCount, setOnlineCount] = useState(0);
   const [topContributors, setTopContributors] = useState<TopContributor[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notifLoaded, setNotifLoaded] = useState(false);
 
   const isAdmin = session?.user?.role === "LEADER" || session?.user?.role === "DEPUTY" || session?.user?.role === "SENIOR";
@@ -101,13 +122,141 @@ export function Header() {
       const res = await fetch("/api/notifications", { cache: "no-store" });
       const json = await res.json();
       if (json.ok) {
-        setNotifications(json.data.items || []);
+        setNotifications((json.data.items || []) as NotificationItem[]);
       }
     } catch {
       // ignore
     } finally {
       setNotifLoaded(true);
     }
+  };
+
+  const roleLabel = (roleName?: string | null) => {
+    if (!roleName) return "";
+    const found = roles.find((r) => r.name === roleName);
+    return found?.label || roleName;
+  };
+
+  const prettyNotification = (n: NotificationItem) => {
+    if (n.kind === "REQUEST_DECISION") {
+      const when = n.decidedAt
+        ? new Date(n.decidedAt as any).toLocaleString("uk-UA", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+      const statusLabel = n.status === "APPROVED" ? "Схвалено" : "Відмова";
+      const statusClass =
+        n.status === "APPROVED"
+          ? "bg-emerald-500/10 text-emerald-300"
+          : "bg-red-500/10 text-red-300";
+      const title = `Заявка: ${n.type === "ALCO" ? "Алко" : "Петра"}`;
+      const subtitle = `${Number(n.totalAmount).toFixed(2)} ₴`;
+      const by = n.decidedBy?.name ? `Обробив: ${n.decidedBy.name}` : null;
+      const note = n.decisionNote ? `Коментар: ${n.decisionNote}` : null;
+      return {
+        when,
+        badgeText: statusLabel,
+        badgeClass: statusClass,
+        title,
+        subtitle,
+        details: [by, note].filter(Boolean) as string[],
+      };
+    }
+
+    // PROFILE_CHANGE
+    const when = n.createdAt
+      ? new Date(n.createdAt as any).toLocaleString("uk-UA", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
+
+    const actorName = n.actor?.name || "Адміністратор";
+    const actorRole = roleLabel(n.actor?.role);
+    const actorLine = actorRole ? `${actorName} · ${actorRole}` : actorName;
+
+    const safeParse = (v?: string | null) => {
+      if (!v) return null;
+      try {
+        return JSON.parse(v);
+      } catch {
+        return null;
+      }
+    };
+
+    const before = safeParse(n.before);
+    const after = safeParse(n.after);
+
+    let title = "Оновлення профілю";
+    let subtitle = actorLine;
+    let badgeText = "Зміна";
+    let badgeClass = "bg-sky-500/10 text-sky-300";
+    let details: string[] = [];
+
+    if (n.action === "USER_NAME_CHANGE") {
+      title = "Змінено нік";
+      const from = before?.name ? `Було: ${before.name}` : null;
+      const to = after?.name ? `Стало: ${after.name}` : null;
+      details = [from, to].filter((x): x is string => Boolean(x));
+      badgeText = "Нік";
+      badgeClass = "bg-purple-500/10 text-purple-300";
+    } else if (n.action === "USER_ROLE_CHANGE") {
+      title = "Змінено роль";
+      const from = before?.role ? `Було: ${roleLabel(before.role)}` : null;
+      const to = after?.role ? `Стало: ${roleLabel(after.role)}` : null;
+      const addFrom = Array.isArray(before?.additionalRoles) && before.additionalRoles.length
+        ? `Додаткові: ${before.additionalRoles.map((r: string) => roleLabel(r)).join(", ")}`
+        : null;
+      const addTo = Array.isArray(after?.additionalRoles) && after.additionalRoles.length
+        ? `Додаткові: ${after.additionalRoles.map((r: string) => roleLabel(r)).join(", ")}`
+        : null;
+      const mods: string[] = [];
+      if (typeof before?.moderatesAlco === "boolean" || typeof after?.moderatesAlco === "boolean") {
+        mods.push(`Алко-модерація: ${after?.moderatesAlco ? "так" : "ні"}`);
+      }
+      if (typeof before?.moderatesPetra === "boolean" || typeof after?.moderatesPetra === "boolean") {
+        mods.push(`Петра-модерація: ${after?.moderatesPetra ? "так" : "ні"}`);
+      }
+      details = [from, to, addFrom, addTo, ...mods].filter((x): x is string => Boolean(x));
+      badgeText = "Роль";
+      badgeClass = "bg-amber-500/10 text-amber-300";
+    } else if (n.action === "USER_BLOCK_CHANGE") {
+      title = after?.isBlocked ? "Вас заблоковано" : "Вас розблоковано";
+      badgeText = after?.isBlocked ? "Блок" : "Доступ";
+      badgeClass = after?.isBlocked ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300";
+      if (after?.banReason) details.push(`Причина: ${after.banReason}`);
+      if (after?.unbanDate) {
+        try {
+          details.push(`До: ${new Date(after.unbanDate).toLocaleString("uk-UA")}`);
+        } catch {}
+      }
+    } else if (n.action === "USER_APPROVE_CHANGE") {
+      title = after?.isApproved ? "Акаунт підтверджено" : "Підтвердження скасовано";
+      badgeText = "Доступ";
+      badgeClass = after?.isApproved ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300";
+    } else if (n.action === "USER_CARD_CHANGE") {
+      title = "Оновлено карту для виплат";
+      badgeText = "Карта";
+      badgeClass = "bg-indigo-500/10 text-indigo-300";
+      const from = before?.cardNumber ? `Стара карта: ${before.cardNumber}` : null;
+      const to = after?.cardNumber ? `Нова карта: ${after.cardNumber}` : null;
+      details = [from, to].filter((x): x is string => Boolean(x));
+    } else if (n.action === "USER_FREEZE_CHANGE") {
+      const nowFrozen = Boolean(after?.isFrozen);
+      title = nowFrozen ? "Профіль заморожено" : "Заморозку знято";
+      badgeText = nowFrozen ? "Freeze" : "Unfreeze";
+      badgeClass = nowFrozen ? "bg-sky-500/10 text-sky-300" : "bg-emerald-500/10 text-emerald-300";
+      if (after?.frozenReason) {
+        details.push(`Причина: ${after.frozenReason}`);
+      }
+    }
+
+    return { when, badgeText, badgeClass, title, subtitle, details };
   };
 
   const handleRefreshSession = async () => {
@@ -242,51 +391,32 @@ export function Header() {
                                 key={n.id}
                                 className="p-3.5 text-xs flex flex-col gap-1 hover:bg-white/5 transition-colors"
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] ${
-                                      n.status === "APPROVED"
-                                        ? "bg-emerald-500/10 text-emerald-300"
-                                        : "bg-red-500/10 text-red-300"
-                                    }`}
-                                  >
-                                    {n.status === "APPROVED"
-                                      ? "Схвалено"
-                                      : "Відмова"}
-                                  </span>
-                                  <span className="text-[10px] text-zinc-500">
-                                    {n.decidedAt
-                                      ? new Date(n.decidedAt).toLocaleString(
-                                          "uk-UA",
-                                          {
-                                            day: "2-digit",
-                                            month: "2-digit",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          }
-                                        )
-                                      : ""}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-zinc-300">
-                                  <span>
-                                    {n.type === "ALCO" ? "Алко" : "Петра"} ·{" "}
-                                    {Number(n.totalAmount).toFixed(2)} ₴
-                                  </span>
-                                </div>
-                                {n.decidedBy && (
-                                  <div className="text-[11px] text-zinc-500">
-                                    Обробив:{" "}
-                                    <span className="font-semibold text-zinc-300">
-                                      {n.decidedBy.name}
-                                    </span>
-                                  </div>
-                                )}
-                                {n.decisionNote && (
-                                  <div className="text-[11px] text-zinc-400">
-                                    Коментар: {n.decisionNote}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const p = prettyNotification(n);
+                                  return (
+                                    <>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span
+                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] ${p.badgeClass}`}
+                                        >
+                                          {p.badgeText}
+                                        </span>
+                                        <span className="text-[10px] text-zinc-500">{p.when}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-zinc-300">
+                                        <span className="font-semibold text-white">{p.title}</span>
+                                      </div>
+                                      <div className="text-[11px] text-zinc-400">{p.subtitle}</div>
+                                      {p.details.length > 0 && (
+                                        <div className="text-[11px] text-zinc-500 space-y-0.5">
+                                          {p.details.map((d, idx) => (
+                                            <div key={idx}>{d}</div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             ))}
                           </div>

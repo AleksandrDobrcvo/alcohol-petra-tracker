@@ -37,16 +37,16 @@ type Permission = {
 };
 
 const DEFAULT_PERMISSIONS: Permission[] = [
-  { id: "manage_users", name: "Manage Users", description: "Add, edit, ban users" },
-  { id: "manage_roles", name: "Manage Roles", description: "Create, edit, assign roles" },
-  { id: "manage_requests", name: "Manage Requests", description: "Approve, reject, delete requests" },
-  { id: "delete_entries", name: "Delete Entries", description: "Remove payment entries" },
-  { id: "ban_users", name: "Ban Users", description: "Block users from accessing the system" },
-  { id: "moderate_alco", name: "Moderate Alco", description: "Handle alcohol-related requests" },
-  { id: "moderate_petra", name: "Moderate Petra", description: "Handle petra-related requests" },
-  { id: "view_reports", name: "View Reports", description: "Access to analytics and reports" },
-  { id: "manage_pricing", name: "Manage Pricing", description: "Set prices for resources" },
-  { id: "view_audit_log", name: "View Audit Log", description: "See system activity logs" },
+  { id: "manage_users", name: "Керування користувачами", description: "Додавати, редагувати та блокувати користувачів" },
+  { id: "manage_roles", name: "Керування ролями", description: "Створювати, редагувати та призначати ролі" },
+  { id: "manage_requests", name: "Керування заявками", description: "Схвалювати, відхиляти та видаляти заявки" },
+  { id: "delete_entries", name: "Видалення записів", description: "Видаляти записи про виплати" },
+  { id: "ban_users", name: "Блокування користувачів", description: "Заблокувати доступ до системи" },
+  { id: "moderate_alco", name: "Модерація Алко", description: "Обробка заявок, пов'язаних з алкоголем" },
+  { id: "moderate_petra", name: "Модерація Петри", description: "Обробка заявок, пов'язаних з Петровою" },
+  { id: "view_reports", name: "Перегляд звітів", description: "Доступ до аналітики та звітів" },
+  { id: "manage_pricing", name: "Налаштування цін", description: "Встановлення цін для ресурсів" },
+  { id: "view_audit_log", name: "Журнал дій", description: "Перегляд історії дій у системі" },
 ];
 
 export function RolePermissionsEditor() {

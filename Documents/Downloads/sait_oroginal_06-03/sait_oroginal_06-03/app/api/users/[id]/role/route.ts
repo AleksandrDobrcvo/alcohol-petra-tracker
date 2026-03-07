@@ -8,9 +8,13 @@ import { ApiError } from "@/src/server/errors";
 
 const schema = z.object({
   role: z.string().optional(),
+  name: z.string().min(1).max(32).optional(),
   additionalRoles: z.array(z.string()).optional(),
   moderatesAlco: z.boolean().optional(),
   moderatesPetra: z.boolean().optional(),
+  cardNumber: z.string().min(4).max(32).nullable().optional(),
+  isFrozen: z.boolean().optional(),
+  frozenReason: z.string().nullable().optional(),
   reason: z.string().optional(),
 });
 
@@ -24,7 +28,7 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
       // Fallback to general user management permission
       const hasGeneralPermission = await canManageUsers(ctx);
       if (!hasGeneralPermission) {
-        throw new ApiError(403, "FORBIDDEN", "Insufficient permissions to change user roles");
+        throw new ApiError(403, "FORBIDDEN", "Недостатньо прав для зміни ролей користувачів");
       }
     }
 
@@ -95,22 +99,100 @@ export async function PATCH(req: Request, ctx2: { params: { id: string } }) {
     const updated = await (prisma as any).user.update({
       where: { id },
       data: { 
-        role: body.role,
-        additionalRoles: body.additionalRoles,
-        moderatesAlco: body.moderatesAlco,
-        moderatesPetra: body.moderatesPetra,
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.role !== undefined && { role: body.role }),
+        ...(body.additionalRoles !== undefined && { additionalRoles: body.additionalRoles }),
+        ...(body.moderatesAlco !== undefined && { moderatesAlco: body.moderatesAlco }),
+        ...(body.moderatesPetra !== undefined && { moderatesPetra: body.moderatesPetra }),
+        ...(body.cardNumber !== undefined && { cardNumber: body.cardNumber || null }),
+        ...(body.isFrozen !== undefined && { 
+          isFrozen: body.isFrozen,
+          frozenReason: body.isFrozen ? (body.frozenReason ?? null) : null,
+        }),
       },
-      select: { id: true, name: true, role: true, additionalRoles: true, isBlocked: true, cardNumber: true, moderatesAlco: true, moderatesPetra: true },
+      select: { 
+        id: true, 
+        name: true, 
+        role: true, 
+        additionalRoles: true, 
+        isBlocked: true, 
+        cardNumber: true, 
+        moderatesAlco: true, 
+        moderatesPetra: true,
+        isFrozen: true,
+        frozenReason: true,
+      },
     });
 
-    await writeAuditLog({
-      actorUserId: ctx.userId,
-      action: "USER_ROLE_CHANGE",
-      targetType: "User",
-      targetId: id,
-      before: { role: target.role },
-      after: { role: updated.role, reason: body.reason || (leadershipTransfer ? "Передача лідерства" : "Без причини") },
-    });
+    if (body.name && body.name !== target.name) {
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "USER_NAME_CHANGE",
+        targetType: "User",
+        targetId: id,
+        before: { name: target.name },
+        after: { name: updated.name, reason: body.reason || "Зміна ніку" },
+      });
+    }
+
+    if (
+      body.role !== undefined ||
+      body.additionalRoles !== undefined ||
+      body.moderatesAlco !== undefined ||
+      body.moderatesPetra !== undefined
+    ) {
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "USER_ROLE_CHANGE",
+        targetType: "User",
+        targetId: id,
+        before: { 
+          role: target.role,
+          additionalRoles: (target as any).additionalRoles ?? [],
+          moderatesAlco: (target as any).moderatesAlco ?? false,
+          moderatesPetra: (target as any).moderatesPetra ?? false,
+        },
+        after: { 
+          role: updated.role, 
+          additionalRoles: updated.additionalRoles,
+          moderatesAlco: updated.moderatesAlco,
+          moderatesPetra: updated.moderatesPetra,
+          reason: body.reason || (leadershipTransfer ? "Передача лідерства" : "Без причини"),
+        },
+      });
+    }
+
+    if (body.cardNumber !== undefined && body.cardNumber !== (target as any).cardNumber) {
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "USER_CARD_CHANGE",
+        targetType: "User",
+        targetId: id,
+        before: { cardNumber: (target as any).cardNumber },
+        after: { cardNumber: updated.cardNumber, reason: body.reason || "Зміна карти" },
+      });
+    }
+
+    if (
+      body.isFrozen !== undefined || 
+      body.frozenReason !== undefined
+    ) {
+      await writeAuditLog({
+        actorUserId: ctx.userId,
+        action: "USER_FREEZE_CHANGE",
+        targetType: "User",
+        targetId: id,
+        before: { 
+          isFrozen: (target as any).isFrozen ?? false, 
+          frozenReason: (target as any).frozenReason ?? null 
+        },
+        after: { 
+          isFrozen: updated.isFrozen, 
+          frozenReason: updated.frozenReason, 
+          reason: body.reason || "Оновлення статусу заморозки" 
+        },
+      });
+    }
 
     return jsonOk({ user: updated, leadershipTransfer });
   } catch (e) {
