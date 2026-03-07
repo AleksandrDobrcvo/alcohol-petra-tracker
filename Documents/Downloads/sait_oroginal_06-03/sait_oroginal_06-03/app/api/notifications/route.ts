@@ -8,8 +8,6 @@ export async function GET() {
 
     const audit = await prisma.auditLog.findMany({
       where: {
-        targetType: "User",
-        targetId: ctx.userId,
         action: {
           in: [
             "USER_ROLE_CHANGE",
@@ -20,6 +18,15 @@ export async function GET() {
             "USER_FREEZE_CHANGE",
           ],
         },
+        OR: [
+          {
+            targetType: "User",
+            targetId: ctx.userId,
+          },
+          {
+            actorUserId: ctx.userId,
+          },
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: 10,
