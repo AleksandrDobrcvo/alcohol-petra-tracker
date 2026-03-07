@@ -147,22 +147,23 @@ export function Header() {
           </motion.div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-3 text-sm">
+          <div className="hidden md:flex items-center gap-1.5 text-xs">
             {session && (
-              <Link href="/public/stats" className="group relative flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-zinc-300 transition-all hover:bg-white/10 hover:text-white">
-                <span>📊 Статистика</span>
+              <Link href="/public/stats" className="group relative flex items-center gap-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-zinc-300 transition-all hover:bg-white/10 hover:text-white" title="Статистика">
+                <span>📊</span>
+                <span className="hidden lg:inline">Статистика</span>
               </Link>
             )}
             {isAdmin || isRoot ? (
-              <Link href="/admin/users" className="relative rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15 transition-all">
-                🛠️ Адмінка
+              <Link href="/admin/users" className="relative rounded-lg bg-white/10 px-2.5 py-1.5 text-white hover:bg-white/15 transition-all" title="Адмінка">
+                🛠️ <span className="hidden lg:inline">Адмінка</span>
                 <AnimatePresence>
                   {pendingUsers > 0 && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0 }}
-                      className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1 text-[10px] font-black text-white shadow-lg shadow-amber-500/30"
+                      className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-0.5 text-[9px] font-black text-white shadow-lg shadow-amber-500/30"
                     >
                       {pendingUsers > 9 ? "9+" : pendingUsers}
                     </motion.span>
@@ -171,15 +172,15 @@ export function Header() {
               </Link>
             ) : null}
             {canSeeRequests && (
-              <Link href="/admin/requests" className="relative rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
-                ✅ Заявки
+              <Link href="/admin/requests" className="relative rounded-lg bg-white/10 px-2.5 py-1.5 text-white hover:bg-white/15" title="Заявки">
+                ✅ <span className="hidden lg:inline">Заявки</span>
                 <AnimatePresence>
                   {pendingRequests > 0 && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0 }}
-                      className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-green-500 px-1 text-[10px] font-black text-white shadow-lg shadow-emerald-500/30"
+                      className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-green-500 px-0.5 text-[9px] font-black text-white shadow-lg shadow-emerald-500/30"
                     >
                       {pendingRequests > 9 ? "9+" : pendingRequests}
                     </motion.span>
@@ -188,8 +189,18 @@ export function Header() {
               </Link>
             )}
             {session && (
-              <Link href="/entries" className="rounded-xl bg-white/10 px-3 py-2 text-white hover:bg-white/15">
-                📒 Записи
+              <Link href="/entries" className="rounded-lg bg-white/10 px-2.5 py-1.5 text-white hover:bg-white/15" title="Записи">
+                📒 <span className="hidden lg:inline">Записи</span>
+              </Link>
+            )}
+            {session && (
+              <Link href="/workshops" className="rounded-lg bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-1.5 text-emerald-300 hover:bg-emerald-500/25 hover:text-white transition-all" title="Цехи">
+                🏭 <span className="hidden lg:inline">Цехи</span>
+              </Link>
+            )}
+            {session && (
+              <Link href="/casino" className="rounded-lg bg-purple-500/15 border border-purple-500/20 px-2.5 py-1.5 text-purple-300 hover:bg-purple-500/25 hover:text-white transition-all" title="Казино">
+                🎰 <span className="hidden lg:inline">Казино</span>
               </Link>
             )}
             {status === "loading" ? (
@@ -351,6 +362,12 @@ export function Header() {
                 <Link href="/public/stats" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-white/5 px-4 py-3 text-white">
                   📊 Статистика
                 </Link>
+                <Link href="/workshops" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-gradient-to-r from-emerald-600/20 to-amber-600/20 border border-emerald-500/20 px-4 py-3 text-emerald-300">
+                  🏭 Цехи
+                </Link>
+                <Link href="/casino" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/20 px-4 py-3 text-purple-300">
+                  🎰 Казино
+                </Link>
                 {canSeeRequests && (
                   <Link href="/admin/requests" onClick={() => setMobileMenuOpen(false)} className="relative flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3 text-emerald-300">
                     <span>✅ Перевірка заявок</span>
@@ -449,8 +466,8 @@ export function Header() {
         <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#05080a] to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#05080a] to-transparent z-10 pointer-events-none" />
 
-        <div className="flex whitespace-nowrap items-center w-full">
-          <div className="flex gap-12 items-center px-6">
+        <div className="flex whitespace-nowrap items-center w-full overflow-hidden">
+          <div className="flex items-center">
             {(() => {
               const items =
                 topContributors.length > 0
@@ -461,15 +478,16 @@ export function Header() {
                       { id: "p3", name: "Будь першим!", totalAmount: 0 },
                     ];
 
-              const duplicated = [...items, ...items];
+              // Triple the items to ensure full screen coverage
+              const duplicated = [...items, ...items, ...items, ...items];
               const duration =
                 items.length > 0
-                  ? Math.max(30, items.length * 10)
-                  : 40;
+                  ? Math.max(20, items.length * 8)
+                  : 30;
 
               return (
                 <motion.div
-                  className="flex gap-12 items-center"
+                  className="flex gap-8 items-center pl-4"
                   animate={{ x: ["0%", "-50%"] }}
                   transition={{
                     duration,

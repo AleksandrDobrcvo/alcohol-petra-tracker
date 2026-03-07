@@ -128,6 +128,25 @@ export default async function HomePage() {
         </section>
       )}
 
+      {session && (
+        <section className="relative z-10 mt-4 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600/20 to-amber-600/20 border border-emerald-500/20 px-6 py-3 text-sm font-black uppercase tracking-widest text-emerald-300 backdrop-blur hover:from-emerald-600/30 hover:to-amber-600/30 hover:text-white transition-all"
+            href="/workshops"
+          >
+            🏭 Цехи
+            <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
+          <Link
+            className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/20 px-6 py-3 text-sm font-black uppercase tracking-widest text-purple-300 backdrop-blur hover:from-purple-600/30 hover:to-pink-600/30 hover:text-white transition-all"
+            href="/casino"
+          >
+            🎰 Казино
+            <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
+        </section>
+      )}
+
       <section className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
         <div className="group relative rounded-3xl border border-white/5 bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.05] transition-all duration-500 hover:-translate-y-2 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
