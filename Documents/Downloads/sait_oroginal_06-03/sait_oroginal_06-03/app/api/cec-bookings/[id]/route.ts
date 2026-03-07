@@ -2,6 +2,8 @@ import { requireSession } from "@/src/server/auth";
 import { prisma } from "@/src/server/prisma";
 import { ApiError } from "@/src/server/errors";
 
+export const dynamic = "force-dynamic";
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }

@@ -2,6 +2,8 @@ import { requireSession } from "@/src/server/auth";
 import { prisma } from "@/src/server/prisma";
 import { ApiError } from "@/src/server/errors";
 
+export const dynamic = "force-dynamic";
+
 // Отримати активні цехи (для головної)
 export async function GET(request: Request) {
   try {

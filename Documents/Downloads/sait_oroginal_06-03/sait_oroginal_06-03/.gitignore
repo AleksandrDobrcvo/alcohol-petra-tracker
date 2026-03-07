@@ -40,3 +40,5 @@ prod.db
 
 # Local Netlify folder
 .netlify
+
+.vercel
