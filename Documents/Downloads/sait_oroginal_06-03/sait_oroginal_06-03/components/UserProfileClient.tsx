@@ -15,7 +15,9 @@ import {
   Star,
   Wallet,
   History,
+  AlertTriangle,
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 type Viewer = {
   id: string;
@@ -66,6 +68,17 @@ type RequestSummary = {
     role: string;
     additionalRoles: string[];
   } | null;
+};
+
+type Warning = {
+  id: string;
+  reason: string;
+  requiredAmount: number;
+  workedOffAmount: number;
+  isWorkedOff: boolean;
+  issuedAt: string;
+  workedOffType: string | null;
+  issuedBy: { id: string; name: string; role: string };
 };
 
 type Props = {
@@ -135,6 +148,34 @@ export function UserProfileClient({
     viewer.role === "DEPUTY" ||
     viewer.role === "SENIOR";
 
+  // Warnings state
+  const [warnings, setWarnings] = useState<Warning[]>([]);
+  const [activeWarnings, setActiveWarnings] = useState(0);
+  const [warningsLoading, setWarningsLoading] = useState(false);
+
+  // Load warnings for this user (if self or admin)
+  useEffect(() => {
+    if (!isSelf && !isAdmin) return;
+    
+    const loadWarnings = async () => {
+      setWarningsLoading(true);
+      try {
+        const res = await fetch(`/api/users/${user.id}/warning`);
+        const json = await res.json();
+        if (json.ok) {
+          setWarnings(json.data.warnings || []);
+          setActiveWarnings(json.data.activeWarnings || 0);
+        }
+      } catch {
+        // Ignore errors
+      } finally {
+        setWarningsLoading(false);
+      }
+    };
+    
+    loadWarnings();
+  }, [user.id, isSelf, isAdmin]);
+
   const isOnline =
     !!user.lastSeenAt &&
     Date.now() - new Date(user.lastSeenAt).getTime() < 5 * 60 * 1000;
@@ -203,6 +244,18 @@ export function UserProfileClient({
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-300 border border-sky-500/30">
                     <Snowflake className="w-3.5 h-3.5" />
                     Заморожено
+                  </span>
+                )}
+                {activeWarnings > 0 && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] border ${
+                    activeWarnings >= 3 
+                      ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' 
+                      : activeWarnings >= 2
+                      ? 'bg-orange-500/10 text-orange-300 border-orange-500/30'
+                      : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                  }`}>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Догани: {activeWarnings}/3
                   </span>
                 )}
               </div>
@@ -530,6 +583,144 @@ export function UserProfileClient({
           </div>
         </motion.div>
       </div>
+
+      {/* Warnings section - visible to self and admins */}
+      {(isSelf || isAdmin) && (warnings.length > 0 || activeWarnings > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2rem] border border-orange-500/20 bg-[#0f0805]/80 p-6 sm:p-7 backdrop-blur-xl space-y-4"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-1.5 w-8 rounded-full bg-orange-500" />
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-300/80">
+                  Догани
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {isSelf 
+                    ? "Ваші активні попередження. Відпрацюйте здаючи петру або алко."
+                    : "Попередження цього користувача"}
+                </p>
+              </div>
+            </div>
+            <span className={`px-3 py-1.5 rounded-full text-xs font-black ${
+              activeWarnings >= 3 
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' 
+                : activeWarnings >= 2
+                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+            }`}>
+              {activeWarnings}/3 активних
+            </span>
+          </div>
+
+          {warningsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+            </div>
+          ) : warnings.length === 0 ? (
+            <p className="text-xs text-zinc-600 italic">
+              Доганів немає.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {warnings.filter(w => !w.isWorkedOff).map((warning, idx) => (
+                <div 
+                  key={warning.id}
+                  className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-orange-400" />
+                        <span className="text-xs font-bold text-orange-300">
+                          Доган #{warnings.filter(w => !w.isWorkedOff).length - idx}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-white">{warning.reason}</p>
+                    </div>
+                    <span className="text-[10px] text-zinc-500">
+                      {formatDate(warning.issuedAt)}
+                    </span>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex justify-between text-[10px] text-zinc-400 mb-1">
+                      <span>Прогрес відпрацювання</span>
+                      <span className="font-bold text-orange-300">
+                        {warning.workedOffAmount}/{warning.requiredAmount}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all"
+                        style={{ 
+                          width: `${Math.min(100, (warning.workedOffAmount / warning.requiredAmount) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-1">
+                      {isSelf 
+                        ? `Здайте ще ${warning.requiredAmount - warning.workedOffAmount} шт. петри або алко для відпрацювання`
+                        : `Залишилось: ${warning.requiredAmount - warning.workedOffAmount} шт.`
+                      }
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                    <span>Видав: {warning.issuedBy?.name || 'Невідомо'}</span>
+                    {warning.workedOffType && (
+                      <span>Тип відпрацювання: {warning.workedOffType === 'ALCO' ? 'Алко' : 'Петра'}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Worked off warnings (collapsed) */}
+              {warnings.filter(w => w.isWorkedOff).length > 0 && (
+                <details className="group">
+                  <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+                    Відпрацьовані догани ({warnings.filter(w => w.isWorkedOff).length})
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {warnings.filter(w => w.isWorkedOff).map((warning) => (
+                      <div 
+                        key={warning.id}
+                        className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                              ВІДПРАЦЬОВАНО
+                            </span>
+                            <span className="text-xs text-zinc-300">{warning.reason}</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-500">
+                            {formatDate(warning.issuedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+
+          {isSelf && activeWarnings > 0 && (
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs text-amber-200">
+              <p className="font-bold mb-1">Як відпрацювати доган?</p>
+              <p className="text-amber-300/80">
+                Кожна здана петра або алко автоматично зараховується в прогрес відпрацювання. 
+                Після досягнення необхідної кількості доган буде знято.
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Footer note for self profile */}
       {isSelf && (

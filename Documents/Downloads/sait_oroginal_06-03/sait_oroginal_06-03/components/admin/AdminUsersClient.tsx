@@ -15,6 +15,7 @@ import {
   UserCheck,
   UserX,
   CalendarClock,
+  AlertTriangle,
 } from "lucide-react";
 
 type User = {
@@ -34,6 +35,17 @@ type User = {
   cardNumber: string | null;
   createdAt: string;
   lastSeenAt: string | null;
+  activeWarnings: number;
+};
+
+type Warning = {
+  id: string;
+  reason: string;
+  requiredAmount: number;
+  workedOffAmount: number;
+  isWorkedOff: boolean;
+  issuedAt: string;
+  issuedBy: { id: string; name: string; role: string };
 };
 
 type RoleOption = {
@@ -56,6 +68,15 @@ export function AdminUsersClient() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [search, setSearch] = useState("");
+  
+  // Warning (доган) state
+  const [warningUser, setWarningUser] = useState<User | null>(null);
+  const [warningReason, setWarningReason] = useState("");
+  const [warningAmount, setWarningAmount] = useState(50);
+  const [warningSaving, setWarningSaving] = useState(false);
+  const [viewWarningsUser, setViewWarningsUser] = useState<User | null>(null);
+  const [userWarnings, setUserWarnings] = useState<Warning[]>([]);
+  const [warningsLoading, setWarningsLoading] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [sortBy, setSortBy] = useState<SortKey>("ROLE");
@@ -235,6 +256,108 @@ export function AdminUsersClient() {
     setEditingUser(user);
   };
 
+  // Warning functions
+  const openWarningModal = (user: User) => {
+    setWarningUser(user);
+    setWarningReason("");
+    setWarningAmount(50);
+  };
+
+  const submitWarning = async () => {
+    if (!warningUser || !warningReason.trim()) return;
+    
+    try {
+      setWarningSaving(true);
+      const res = await fetch(`/api/users/${warningUser.id}/warning`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: warningReason.trim(),
+          requiredAmount: warningAmount,
+        }),
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        setUsers(prev =>
+          prev.map((u: User) =>
+            u.id === warningUser.id
+              ? {
+                  ...u,
+                  activeWarnings: json.data.activeWarnings,
+                  isFrozen: json.data.isFrozen || u.isFrozen,
+                  frozenReason: json.data.isFrozen ? "Автоматична заморозка: 3 догани" : u.frozenReason,
+                }
+              : u
+          )
+        );
+        setWarningUser(null);
+        alert(json.data.message || "Доган успішно видано");
+      } else {
+        alert(json.error?.message || "Помилка при видачі догана");
+      }
+    } catch (err) {
+      alert("Помилка при видачі догана");
+    } finally {
+      setWarningSaving(false);
+    }
+  };
+
+  const openViewWarnings = async (user: User) => {
+    setViewWarningsUser(user);
+    setWarningsLoading(true);
+    
+    try {
+      const res = await fetch(`/api/users/${user.id}/warning`);
+      const json = await res.json();
+      
+      if (json.ok) {
+        setUserWarnings(json.data.warnings || []);
+      } else {
+        setUserWarnings([]);
+      }
+    } catch {
+      setUserWarnings([]);
+    } finally {
+      setWarningsLoading(false);
+    }
+  };
+
+  const removeWarning = async (warningId: string) => {
+    if (!viewWarningsUser) return;
+    if (!confirm("Ви впевнені, що хочете зняти цей доган?")) return;
+    
+    try {
+      const res = await fetch(`/api/users/${viewWarningsUser.id}/warning`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ warningId }),
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        setUserWarnings(prev => prev.filter(w => w.id !== warningId));
+        setUsers(prev =>
+          prev.map((u: User) =>
+            u.id === viewWarningsUser.id
+              ? {
+                  ...u,
+                  activeWarnings: json.data.activeWarnings,
+                  isFrozen: json.data.wasUnfrozen ? false : u.isFrozen,
+                  frozenReason: json.data.wasUnfrozen ? null : u.frozenReason,
+                }
+              : u
+          )
+        );
+        alert(json.data.message || "Доган знято");
+      } else {
+        alert(json.error?.message || "Помилка при знятті догана");
+      }
+    } catch {
+      alert("Помилка при знятті догана");
+    }
+  };
+
   const saveUserDetails = async () => {
     if (!editingUser) return;
     try {
@@ -315,7 +438,8 @@ export function AdminUsersClient() {
     const blocked = users.filter((u) => u.isBlocked).length;
     const frozen = users.filter((u) => u.isFrozen).length;
     const pending = total - approved;
-    return { total, approved, blocked, frozen, pending };
+    const withWarnings = users.filter((u) => (u.activeWarnings || 0) > 0).length;
+    return { total, approved, blocked, frozen, pending, withWarnings };
   }, [users]);
 
   const isUserOnline = (u: User) => {
@@ -477,6 +601,15 @@ export function AdminUsersClient() {
                 Заморожено
               </div>
               <div className="font-bold text-sky-100">{stats.frozen}</div>
+            </div>
+          </div>
+          <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 px-3 py-2 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-400" />
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.15em] text-orange-300/80">
+                З доганами
+              </div>
+              <div className="font-bold text-orange-200">{stats.withWarnings}</div>
             </div>
           </div>
         </div>
@@ -644,13 +777,22 @@ export function AdminUsersClient() {
                 </span>
                 {user.isFrozen && (
                   <span className="text-amber-400">
-                    🧊 Заморожено{user.frozenReason ? `: ${user.frozenReason}` : ""}
+                    Заморожено{user.frozenReason ? `: ${user.frozenReason}` : ""}
+                  </span>
+                )}
+                {(user.activeWarnings || 0) > 0 && (
+                  <span className={`flex items-center gap-1 ${
+                    user.activeWarnings >= 3 ? 'text-rose-400' : 
+                    user.activeWarnings >= 2 ? 'text-orange-400' : 'text-amber-400'
+                  }`}>
+                    <AlertTriangle className="w-3 h-3" />
+                    Догани: {user.activeWarnings}/3
                   </span>
                 )}
               </div>
             </div>
             
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
               <select
                 value={user.role}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => changeRole(user.id, e.target.value)}
@@ -687,6 +829,25 @@ export function AdminUsersClient() {
               >
                 Деталі
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openWarningModal(user)}
+                className="text-orange-400 border-orange-400/30"
+                disabled={(user.activeWarnings || 0) >= 3}
+              >
+                Доган
+              </Button>
+              {(user.activeWarnings || 0) > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openViewWarnings(user)}
+                  className="text-amber-400 border-amber-400/30"
+                >
+                  {user.activeWarnings}/3
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -901,6 +1062,175 @@ export function AdminUsersClient() {
                 disabled={editSaving}
               >
                 {editSaving ? "Збереження..." : "Зберегти"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Issue Warning Modal */}
+      {warningUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="w-full max-w-md rounded-2xl bg-zinc-900 border border-orange-500/30 p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              <h3 className="text-lg font-bold text-white">
+                Видати доган - {warningUser.name}
+              </h3>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Поточна кількість доганів: <span className="font-bold text-orange-300">{warningUser.activeWarnings || 0}/3</span>
+              {(warningUser.activeWarnings || 0) >= 2 && (
+                <span className="block text-rose-400 mt-1">
+                  Увага! При видачі 3-го догана користувача буде автоматично заморожено.
+                </span>
+              )}
+            </p>
+            <div className="space-y-2">
+              <label className="text-[11px] text-zinc-500 font-bold uppercase">
+                Причина догана *
+              </label>
+              <textarea
+                className="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-white"
+                rows={3}
+                placeholder="Вкажіть причину догана..."
+                value={warningReason}
+                onChange={e => setWarningReason(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] text-zinc-500 font-bold uppercase">
+                Кількість для відпрацювання (шт.)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                className="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-white"
+                value={warningAmount}
+                onChange={e => setWarningAmount(parseInt(e.target.value) || 50)}
+              />
+              <p className="text-[10px] text-zinc-500">
+                Користувач зможе відпрацювати доган, здаючи петру або алко
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWarningUser(null)}
+                className="flex-1 border-zinc-600 text-zinc-300"
+                disabled={warningSaving}
+              >
+                Скасувати
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={submitWarning}
+                className="flex-1 bg-orange-600 hover:bg-orange-500"
+                disabled={warningSaving || !warningReason.trim()}
+              >
+                {warningSaving ? "Збереження..." : "Видати доган"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Warnings Modal */}
+      {viewWarningsUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="w-full max-w-lg rounded-2xl bg-zinc-900 border border-amber-500/30 p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <h3 className="text-lg font-bold text-white">
+                  Догани - {viewWarningsUser.name}
+                </h3>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                (viewWarningsUser.activeWarnings || 0) >= 3 
+                  ? 'bg-rose-500/20 text-rose-300' 
+                  : 'bg-amber-500/20 text-amber-300'
+              }`}>
+                {viewWarningsUser.activeWarnings || 0}/3
+              </span>
+            </div>
+            
+            {warningsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-500"></div>
+              </div>
+            ) : userWarnings.length === 0 ? (
+              <p className="text-zinc-400 text-center py-4">Доганів немає</p>
+            ) : (
+              <div className="space-y-3">
+                {userWarnings.map((warning, idx) => (
+                  <div 
+                    key={warning.id}
+                    className={`rounded-xl p-4 border ${
+                      warning.isWorkedOff 
+                        ? 'bg-emerald-500/10 border-emerald-500/30' 
+                        : 'bg-zinc-800/50 border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span className="text-xs text-zinc-500">Доган #{userWarnings.length - idx}</span>
+                        <h4 className="font-bold text-white">{warning.reason}</h4>
+                      </div>
+                      {warning.isWorkedOff ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                          ВІДПРАЦЬОВАНО
+                        </span>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeWarning(warning.id)}
+                          className="text-rose-400 border-rose-400/30 text-xs px-2 py-1"
+                        >
+                          Зняти
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="mb-2">
+                      <div className="flex justify-between text-[10px] text-zinc-400 mb-1">
+                        <span>Прогрес відпрацювання</span>
+                        <span>{warning.workedOffAmount}/{warning.requiredAmount}</span>
+                      </div>
+                      <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            warning.isWorkedOff ? 'bg-emerald-500' : 'bg-amber-500'
+                          }`}
+                          style={{ 
+                            width: `${Math.min(100, (warning.workedOffAmount / warning.requiredAmount) * 100)}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between text-[10px] text-zinc-500">
+                      <span>Видав: {warning.issuedBy?.name || 'Невідомо'}</span>
+                      <span>{new Date(warning.issuedAt).toLocaleDateString('uk-UA')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewWarningsUser(null)}
+                className="w-full border-zinc-600 text-zinc-300"
+              >
+                Закрити
               </Button>
             </div>
           </div>
