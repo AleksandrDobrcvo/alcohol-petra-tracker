@@ -7,7 +7,7 @@ import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
 import { canManageRequests } from "@/src/server/rbac";
 import { ApiError } from "@/src/server/errors";
-import { processWarningWorkOff } from "@/app/api/users/[id]/warning/work-off/route";
+import { processWarningWorkOff } from "@/src/server/warningWorkOff";
 
 const entryCreateSchema = z.object({
   date: z.string().datetime(),
