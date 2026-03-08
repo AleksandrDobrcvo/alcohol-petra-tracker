@@ -7,6 +7,7 @@ import { calcQuantityAndAmount } from "@/src/server/entryCalc";
 import { writeAuditLog } from "@/src/server/audit";
 import { canManageRequests } from "@/src/server/rbac";
 import { ApiError } from "@/src/server/errors";
+import { processWarningWorkOff } from "@/app/api/users/[id]/warning/work-off/route";
 
 const entryCreateSchema = z.object({
   date: z.string().datetime(),
@@ -116,7 +117,46 @@ export async function POST(req: Request) {
       },
     });
 
-    return jsonOk({ entry }, { status: 201 });
+    // Проверяем есть ли у пользователя активные доганы для отработки
+    let warningWorkOffResult = null;
+    try {
+      const submitter = await prisma.user.findUnique({
+        where: { id: body.submitterId },
+        select: { activeWarnings: true },
+      });
+
+      if (submitter && submitter.activeWarnings > 0) {
+        // Автоматически засчитываем quantity в отработку догана
+        warningWorkOffResult = await processWarningWorkOff(
+          body.submitterId,
+          body.type as "ALCO" | "PETRA",
+          quantity
+        );
+
+        if (warningWorkOffResult) {
+          await writeAuditLog({
+            actorUserId: ctx.userId,
+            action: "WARNING_AUTO_WORK_OFF",
+            targetType: "Warning",
+            targetId: warningWorkOffResult.warning.id,
+            after: {
+              entryId: entry.id,
+              type: body.type,
+              amount: quantity,
+              isFullyWorkedOff: warningWorkOffResult.isFullyWorkedOff,
+            },
+          });
+        }
+      }
+    } catch (workOffError) {
+      // Не прерываем создание entry если отработка не удалась
+      console.error("[entries/POST] Warning work-off error:", workOffError);
+    }
+
+    return jsonOk({ 
+      entry, 
+      warningWorkOff: warningWorkOffResult,
+    }, { status: 201 });
   } catch (e) {
     return jsonError(e);
   }

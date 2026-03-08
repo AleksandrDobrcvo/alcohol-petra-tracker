@@ -40,6 +40,7 @@ model User {
   updatedAt         DateTime          @updatedAt
   additionalRoles   String[]          @default([])
   lastSeenAt        DateTime?
+  activeWarnings    Int               @default(0)
   auditLogs         AuditLog[]        @relation("AuditActor")
   createdEntries    Entry[]           @relation("EntryCreator")
   submittedEntries  Entry[]           @relation("EntrySubmitter")
@@ -47,6 +48,8 @@ model User {
   decidedRequests   EntryRequest[]    @relation("RequestDecider")
   submittedRequests EntryRequest[]    @relation("RequestSubmitter")
   publicViewTokens  PublicViewToken[] @relation("PublicTokenCreator")
+  warnings          Warning[]         @relation("UserWarnings")
+  issuedWarnings    Warning[]         @relation("IssuedWarnings")
 }
 
 model Entry {
@@ -142,4 +145,28 @@ model Pricing {
   updatedAt DateTime @updatedAt
 
   @@unique([type, stars])
+}
+
+model Warning {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation("UserWarnings", fields: [userId], references: [id])
+  reason          String
+  issuedById      String
+  issuedBy        User      @relation("IssuedWarnings", fields: [issuedById], references: [id])
+  issuedAt        DateTime  @default(now())
+  
+  // Отработка
+  requiredAmount  Int
+  workedOffAmount Int       @default(0)
+  workedOffType   String?
+  isWorkedOff     Boolean   @default(false)
+  workedOffAt     DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([isWorkedOff])
+  @@index([issuedById])
 }
